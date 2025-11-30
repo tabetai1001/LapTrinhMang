@@ -1,53 +1,68 @@
-# Makefile - Project Ai La Trieu Phu (Client-Server)
+# Makefile - Project Ai La Trieu Phu (Modular Version)
 # Compiler: GCC
 # OS: Windows (MinGW)
 
 CC = gcc
+
 # CFLAGS: 
-# -Wall: Hien thi tat ca canh bao
-# -I./src/common: Them thu muc common vao duong dan include (de tim thay protocol.h, cJSON.h)
-CFLAGS = -Wall -I./src/common 
+# -Wall: Hien thi canh bao
+# -I...: Them cac thu muc header vao duong dan include
+CFLAGS = -Wall -I./src/common -I./src/server/include 
 
 # LDFLAGS:
-# -lws2_32: Link voi thu vien Winsock 2 (bat buoc cho lap trinh mang tren Windows)
+# -lws2_32: Link thu vien Winsock 2
 LDFLAGS = -lws2_32
 
-# Dinh nghia cac thu muc
-SRC_COMMON = src/common
-SRC_SERVER = src/server
-SRC_CLIENT_NATIVE = src/client/native
+# --- DUONG DAN THU MUC ---
 BIN_DIR = bin
+SRC_COMMON = src/common
+SRC_SERVER_DIR = src/server
+SRC_SERVER_MODULES = src/server/modules
+SRC_CLIENT_NATIVE = src/client/native
+
+# --- DANH SACH FILE NGUON SERVER ---
+# Bao gom main.c, cac modules chuc nang va cJSON
+SERVER_SOURCES = $(SRC_SERVER_DIR)/main.c \
+                 $(SRC_SERVER_MODULES)/server_state.c \
+                 $(SRC_SERVER_MODULES)/data_manager.c \
+                 $(SRC_SERVER_MODULES)/auth_service.c \
+                 $(SRC_SERVER_MODULES)/game_service.c \
+                 $(SRC_SERVER_MODULES)/connection_handler.c \
+                 $(SRC_COMMON)/cJSON.c
+
+# --- DANH SACH FILE NGUON CLIENT DLL ---
+# Bao gom client_network.c va cJSON
+CLIENT_SOURCES = $(SRC_CLIENT_NATIVE)/client_network.c \
+                 $(SRC_COMMON)/cJSON.c
 
 # --- TARGETS ---
 
-# Target mac dinh: Tao thu muc bin, sau do build server va client dll
+# 1. Target mac dinh: Tao bin -> Build Server -> Build Client DLL
 all: directories server client_dll
 
-# 0. Tao thu muc bin neu chua ton tai
+# 2. Tao thu muc bin neu chua co
 directories:
 	@if not exist $(BIN_DIR) mkdir $(BIN_DIR)
 
-# 1. Build Server (.exe)
-# Server can: server.c va cJSON.c (de xu ly JSON)
-server: $(SRC_SERVER)/server.c $(SRC_COMMON)/cJSON.c
-	@echo [BUILD] Building Server...
-	$(CC) $(CFLAGS) -o $(BIN_DIR)/server.exe $(SRC_SERVER)/server.c $(SRC_COMMON)/cJSON.c $(LDFLAGS)
+# 3. Build Server (.exe)
+server: $(SERVER_SOURCES)
+	@echo [BUILD] Building Server (Modular)...
+	$(CC) $(CFLAGS) -o $(BIN_DIR)/server.exe $(SERVER_SOURCES) $(LDFLAGS)
 	@echo [SUCCESS] Server built at $(BIN_DIR)/server.exe
 
-# 2. Build Client Network DLL (.dll)
-# Client can: client_network.c va cJSON.c (de dong goi vao DLL cho Python goi)
-client_dll: $(SRC_CLIENT_NATIVE)/client_network.c $(SRC_COMMON)/cJSON.c
+# 4. Build Client Network DLL (.dll)
+client_dll: $(CLIENT_SOURCES)
 	@echo [BUILD] Building Client DLL...
-	$(CC) $(CFLAGS) -shared -o $(BIN_DIR)/client_network.dll $(SRC_CLIENT_NATIVE)/client_network.c $(SRC_COMMON)/cJSON.c $(LDFLAGS)
+	$(CC) $(CFLAGS) -shared -o $(BIN_DIR)/client_network.dll $(CLIENT_SOURCES) $(LDFLAGS)
 	@echo [SUCCESS] Client DLL built at $(BIN_DIR)/client_network.dll
 
-# 3. Don dep file da build
+# 5. Don dep (Xoa file da build)
 clean:
 	@if exist $(BIN_DIR)\server.exe del $(BIN_DIR)\server.exe
 	@if exist $(BIN_DIR)\client_network.dll del $(BIN_DIR)\client_network.dll
-	@echo [CLEAN] Deleted binary files in $(BIN_DIR).
+	@echo [CLEAN] Cleanup complete.
 
-# 4. Chay thu Server (Luu y: phai chay tu thu muc goc de tim thay folder data)
-run_server: server
+# 6. Chay thu Server
+run: server
 	@echo [RUN] Starting Server...
 	.\$(BIN_DIR)\server.exe
