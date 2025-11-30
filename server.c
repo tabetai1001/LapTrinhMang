@@ -38,6 +38,7 @@ typedef struct {
     char current_opponent[50];    // Lưu tên đối thủ hiện tại
     int game_session_id;      // ID của phiên game hiện tại (-1 nếu không chơi)
     int current_question_index; // Câu hỏi hiện tại của người chơi này
+    int last_lobby_version;   // Version lobby mà client đã biết
 } ClientState;
 
 typedef struct {
@@ -82,6 +83,8 @@ ClientState clients[MAX_CLIENTS];
 GameSession game_sessions[MAX_GAME_SESSIONS];
 CRITICAL_SECTION cs_clients;
 CRITICAL_SECTION cs_games;
+int lobby_version = 0; // Tăng mỗi khi có thay đổi lobby
+CRITICAL_SECTION cs_lobby;
 
 // --- CÁC HÀM TIỆN ÍCH ---
 
@@ -115,6 +118,91 @@ int find_client_index(const char* username) {
 
 // Forward declaration
 cJSON* get_random_question(int *used_ids, int used_count);
+
+// Hàm broadcast thông báo cập nhật lobby cho tất cả client đang online
+void broadcast_lobby_update() {
+    printf("[Server] Broadcasting lobby update to all online clients\n");
+    
+    // Đọc danh sách tất cả accounts từ file
+    char *file_content = read_file(ACCOUNT_FILE);
+    if (!file_content) return;
+    
+    cJSON *accounts = cJSON_Parse(file_content);
+    if (!accounts || !cJSON_IsArray(accounts)) {
+        if (accounts) cJSON_Delete(accounts);
+        free(file_content);
+        return;
+    }
+    
+    EnterCriticalSection(&cs_clients);
+    
+    // Duyệt qua tất cả client đang online
+    for (int client_idx = 0; client_idx < MAX_CLIENTS; client_idx++) {
+        if (clients[client_idx].socket == 0 || !clients[client_idx].is_logged_in) {
+            continue;
+        }
+        
+        // Tạo message LOBBY_LIST với tất cả người chơi
+        cJSON *msg = cJSON_CreateObject();
+        cJSON_AddStringToObject(msg, "type", MSG_TYPE_LOBBY_LIST);
+        cJSON *arr = cJSON_CreateArray();
+        
+        // Duyệt qua tất cả accounts
+        cJSON *acc = NULL;
+        cJSON_ArrayForEach(acc, accounts) {
+            cJSON *username_json = cJSON_GetObjectItem(acc, "username");
+            if (username_json) {
+                char *username = username_json->valuestring;
+                
+                // Bỏ qua chính client đang nhận
+                if (strcmp(username, clients[client_idx].username) == 0) {
+                    continue;
+                }
+                
+                // Tìm xem user này có đang online không
+                int is_online = 0;
+                int is_in_game = 0;
+                
+                for (int i = 0; i < MAX_CLIENTS; i++) {
+                    if (clients[i].socket != 0 && clients[i].is_logged_in && 
+                        strcmp(clients[i].username, username) == 0) {
+                        is_online = 1;
+                        is_in_game = clients[i].is_busy;
+                        break;
+                    }
+                }
+                
+                // Tạo object với thông tin đầy đủ
+                cJSON *player_obj = cJSON_CreateObject();
+                cJSON_AddStringToObject(player_obj, "name", username);
+                
+                // Xác định status
+                if (!is_online) {
+                    cJSON_AddStringToObject(player_obj, "status", "OFFLINE");
+                } else if (is_in_game) {
+                    cJSON_AddStringToObject(player_obj, "status", "IN_GAME");
+                } else {
+                    cJSON_AddStringToObject(player_obj, "status", "FREE");
+                }
+                
+                cJSON_AddItemToArray(arr, player_obj);
+            }
+        }
+        
+        cJSON_AddItemToObject(msg, "players", arr);
+        
+        // Gửi message
+        char *msg_str = cJSON_PrintUnformatted(msg);
+        send(clients[client_idx].socket, msg_str, strlen(msg_str), 0);
+        free(msg_str);
+        cJSON_Delete(msg);
+    }
+    
+    LeaveCriticalSection(&cs_clients);
+    
+    cJSON_Delete(accounts);
+    free(file_content);
+}
 
 void save_history_to_file() {
     cJSON *history_arr = cJSON_CreateArray();
@@ -460,6 +548,7 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
             strcpy(clients[i].pending_invite_from, "");
             clients[i].game_session_id = -1;
             clients[i].current_question_index = 0;
+            clients[i].last_lobby_version = -1; // Chưa biết version nào
             client_index = i;
             break;
         }
@@ -521,6 +610,13 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                 cJSON_AddStringToObject(res, "type", MSG_TYPE_LOGIN_SUCCESS);
                 cJSON_AddStringToObject(res, "user", u->valuestring);
                 cJSON_AddNumberToObject(res, "total_score", score);
+                
+                // Tăng lobby version để các client khác biết lobby đã thay đổi
+                EnterCriticalSection(&cs_lobby);
+                lobby_version++;
+                clients[client_index].last_lobby_version = lobby_version; // Client này đã biết version mới
+                printf("[Server] User %s logged in, lobby_version=%d\n", u->valuestring, lobby_version);
+                LeaveCriticalSection(&cs_lobby);
             } else {
                 cJSON_AddStringToObject(res, "type", MSG_TYPE_LOGIN_FAIL);
                 cJSON_AddStringToObject(res, "message", "Sai tai khoan/mat khau");
@@ -557,7 +653,84 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                     clients[client_index].username, clients[client_index].current_opponent, game_sessions[gid].total_questions, game_sessions[gid].game_key);
             }
             else {
-                cJSON_AddStringToObject(res, "type", MSG_TYPE_NO_EVENT);
+                // Kiểm tra xem lobby có thay đổi không
+                EnterCriticalSection(&cs_lobby);
+                int current_lobby_version = lobby_version;
+                int client_lobby_version = clients[client_index].last_lobby_version;
+                LeaveCriticalSection(&cs_lobby);
+                
+                printf("[Server] POLL from %s: client_version=%d, current_version=%d\n", 
+                       clients[client_index].username, client_lobby_version, current_lobby_version);
+                
+                if (client_lobby_version != current_lobby_version) {
+                    // Lobby đã thay đổi, gửi lobby list mới
+                    printf("[Server] POLL: Sending LOBBY_LIST to %s (version %d -> %d)\n", 
+                           clients[client_index].username, client_lobby_version, current_lobby_version);
+                    
+                    cJSON_AddStringToObject(res, "type", MSG_TYPE_LOBBY_LIST);
+                    
+                    cJSON *arr = cJSON_CreateArray();
+                    
+                    // Đọc tất cả accounts từ file
+                    char *file_content = read_file(ACCOUNT_FILE);
+                    if (file_content) {
+                        cJSON *accounts = cJSON_Parse(file_content);
+                        if (accounts && cJSON_IsArray(accounts)) {
+                            cJSON *acc = NULL;
+                            cJSON_ArrayForEach(acc, accounts) {
+                                cJSON *username_json = cJSON_GetObjectItem(acc, "username");
+                                if (username_json) {
+                                    char *username = username_json->valuestring;
+                                    
+                                    // Bỏ qua chính mình
+                                    if (strcmp(username, clients[client_index].username) == 0) {
+                                        continue;
+                                    }
+                                    
+                                    // Tìm xem user này có đang online không
+                                    int is_online = 0;
+                                    int is_in_game = 0;
+                                    
+                                    for (int i = 0; i < MAX_CLIENTS; i++) {
+                                        if (clients[i].socket != 0 && clients[i].is_logged_in && 
+                                            strcmp(clients[i].username, username) == 0) {
+                                            is_online = 1;
+                                            is_in_game = clients[i].is_busy;
+                                            break;
+                                        }
+                                    }
+                                    
+                                    // Tạo object với thông tin đầy đủ
+                                    cJSON *player_obj = cJSON_CreateObject();
+                                    cJSON_AddStringToObject(player_obj, "name", username);
+                                    
+                                    // Xác định status
+                                    if (!is_online) {
+                                        cJSON_AddStringToObject(player_obj, "status", "OFFLINE");
+                                    } else if (is_in_game) {
+                                        cJSON_AddStringToObject(player_obj, "status", "IN_GAME");
+                                    } else {
+                                        cJSON_AddStringToObject(player_obj, "status", "FREE");
+                                    }
+                                    
+                                    cJSON_AddItemToArray(arr, player_obj);
+                                }
+                            }
+                        }
+                        if (accounts) cJSON_Delete(accounts);
+                        free(file_content);
+                    }
+                    
+                    cJSON_AddItemToObject(res, "players", arr);
+                    
+                    // Cập nhật version mà client đã biết
+                    EnterCriticalSection(&cs_lobby);
+                    clients[client_index].last_lobby_version = current_lobby_version;
+                    LeaveCriticalSection(&cs_lobby);
+                } else {
+                    // Không có thay đổi, gửi NO_EVENT
+                    cJSON_AddStringToObject(res, "type", MSG_TYPE_NO_EVENT);
+                }
             }
             LeaveCriticalSection(&cs_games);
             LeaveCriticalSection(&cs_clients);
@@ -622,6 +795,12 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                     
                     printf("[Server] Game session %d created: %s vs %s (%d questions, KEY=%lld)\n", 
                         game_id, clients[i_idx].username, clients[client_index].username, num_questions, game_sessions[game_id].game_key);
+                    
+                    // Tăng lobby_version vì 2 người chơi chuyển sang trạng thái IN_GAME
+                    EnterCriticalSection(&cs_lobby);
+                    lobby_version++;
+                    printf("[Server] Players entering game, lobby_version=%d\n", lobby_version);
+                    LeaveCriticalSection(&cs_lobby);
                     
                     // Báo ngay cho người chấp nhận
                     cJSON_AddStringToObject(res, "type", MSG_TYPE_GAME_START);
@@ -946,6 +1125,12 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
             clients[client_index].game_session_id = -1;
             memset(clients[client_index].current_opponent, 0, sizeof(clients[client_index].current_opponent));
             
+            // Tăng lobby_version vì người chơi quit về FREE
+            EnterCriticalSection(&cs_lobby);
+            lobby_version++;
+            printf("[Server] Player quit game, lobby_version=%d\n", lobby_version);
+            LeaveCriticalSection(&cs_lobby);
+            
             cJSON_AddStringToObject(res, "type", "QUIT_GAME_SUCCESS");
             
             LeaveCriticalSection(&cs_games);
@@ -954,16 +1139,86 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
         
         // --- CÁC CHỨC NĂNG KHÁC ---
         else if (strcmp(type->valuestring, MSG_TYPE_GET_LOBBY_LIST) == 0) {
-             cJSON_AddStringToObject(res, "type", MSG_TYPE_LOBBY_LIST);
-             cJSON *arr = cJSON_CreateArray();
-             EnterCriticalSection(&cs_clients);
-             for(int i=0; i<MAX_CLIENTS; i++) {
-                 if (clients[i].socket!=0 && clients[i].is_logged_in && i!=client_index && clients[i].is_busy==0) {
-                     cJSON_AddItemToArray(arr, cJSON_CreateString(clients[i].username));
-                 }
-             }
-             LeaveCriticalSection(&cs_clients);
-             cJSON_AddItemToObject(res, "players", arr);
+            // Kiểm tra xem client có yêu cầu include_offline không
+            cJSON *include_offline_json = cJSON_GetObjectItem(req, "include_offline");
+            int include_offline = (include_offline_json && cJSON_IsTrue(include_offline_json)) ? 1 : 0;
+            
+            printf("[Server] GET_LOBBY_LIST from %s (include_offline=%d)\n", 
+                   clients[client_index].username, include_offline);
+            
+            cJSON_AddStringToObject(res, "type", MSG_TYPE_LOBBY_LIST);
+            cJSON *arr = cJSON_CreateArray();
+            
+            if (include_offline) {
+                // TRẢ VỀ TẤT CẢ NGƯỜI CHƠI ĐÃ ĐĂNG KÝ với status
+                char *file_content = read_file(ACCOUNT_FILE);
+                if (file_content) {
+                    cJSON *accounts = cJSON_Parse(file_content);
+                    if (accounts && cJSON_IsArray(accounts)) {
+                        cJSON *acc = NULL;
+                        cJSON_ArrayForEach(acc, accounts) {
+                            cJSON *username_json = cJSON_GetObjectItem(acc, "username");
+                            if (username_json) {
+                                char *username = username_json->valuestring;
+                                
+                                // Bỏ qua chính mình
+                                if (strcmp(username, clients[client_index].username) == 0) {
+                                    continue;
+                                }
+                                
+                                // Tìm xem user này có đang online không
+                                EnterCriticalSection(&cs_clients);
+                                int is_online = 0;
+                                int is_in_game = 0;
+                                
+                                for (int i = 0; i < MAX_CLIENTS; i++) {
+                                    if (clients[i].socket != 0 && clients[i].is_logged_in && 
+                                        strcmp(clients[i].username, username) == 0) {
+                                        is_online = 1;
+                                        is_in_game = clients[i].is_busy;
+                                        break;
+                                    }
+                                }
+                                LeaveCriticalSection(&cs_clients);
+                                
+                                // Tạo object với thông tin đầy đủ
+                                cJSON *player_obj = cJSON_CreateObject();
+                                cJSON_AddStringToObject(player_obj, "name", username);
+                                
+                                // Xác định status
+                                if (!is_online) {
+                                    cJSON_AddStringToObject(player_obj, "status", "OFFLINE");
+                                } else if (is_in_game) {
+                                    cJSON_AddStringToObject(player_obj, "status", "IN_GAME");
+                                } else {
+                                    cJSON_AddStringToObject(player_obj, "status", "FREE");
+                                }
+                                
+                                cJSON_AddItemToArray(arr, player_obj);
+                            }
+                        }
+                    }
+                    if (accounts) cJSON_Delete(accounts);
+                    free(file_content);
+                }
+                
+                printf("[Server] Sent ALL %d players (with status) to %s\n", 
+                       cJSON_GetArraySize(arr), clients[client_index].username);
+            } else {
+                // CHỈ TRẢ VỀ NGƯỜI CHƠI ONLINE VÀ RẢNH (logic cũ)
+                EnterCriticalSection(&cs_clients);
+                for(int i=0; i<MAX_CLIENTS; i++) {
+                    if (clients[i].socket!=0 && clients[i].is_logged_in && i!=client_index && clients[i].is_busy==0) {
+                        cJSON_AddItemToArray(arr, cJSON_CreateString(clients[i].username));
+                    }
+                }
+                LeaveCriticalSection(&cs_clients);
+                
+                printf("[Server] Sent %d online/free players to %s\n", 
+                       cJSON_GetArraySize(arr), clients[client_index].username);
+            }
+            
+            cJSON_AddItemToObject(res, "players", arr);
         }
         else if (strcmp(type->valuestring, MSG_TYPE_GET_HISTORY) == 0) {
             // Lấy lịch sử đấu của người chơi hiện tại
@@ -1000,6 +1255,33 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
             cJSON_AddItemToObject(res, "history", history_arr);
             printf("[Server] Sent %d history records to %s\n", cJSON_GetArraySize(history_arr), clients[client_index].username);
         }
+        else if (strcmp(type->valuestring, MSG_TYPE_LOGOUT) == 0) {
+            // Xử lý đăng xuất
+            EnterCriticalSection(&cs_clients);
+            char logout_user[50];
+            strcpy(logout_user, clients[client_index].username);
+            
+            // Kiểm tra xem có đang trong game không
+            if (clients[client_index].is_busy || clients[client_index].game_session_id >= 0) {
+                LeaveCriticalSection(&cs_clients);
+                cJSON_AddStringToObject(res, "type", "LOGOUT_FAIL");
+                cJSON_AddStringToObject(res, "message", "Khong the dang xuat khi dang choi");
+                printf("[Server] %s tried to logout while in game\n", logout_user);
+            } else {
+                // Đánh dấu logout
+                clients[client_index].is_logged_in = 0;
+                LeaveCriticalSection(&cs_clients);
+                
+                // Tăng lobby version
+                EnterCriticalSection(&cs_lobby);
+                lobby_version++;
+                printf("[Server] User %s logged out, lobby_version=%d\n", logout_user, lobby_version);
+                LeaveCriticalSection(&cs_lobby);
+                
+                cJSON_AddStringToObject(res, "type", MSG_TYPE_LOGOUT_SUCCESS);
+                printf("[Server] %s logged out successfully\n", logout_user);
+            }
+        }
         else if (strcmp(type->valuestring, MSG_TYPE_GET_LEADERBOARD) == 0) {
             cJSON_AddStringToObject(res, "type", MSG_TYPE_LEADERBOARD_DATA);
             cJSON_AddItemToObject(res, "players", get_leaderboard_json());
@@ -1014,8 +1296,20 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
 
     // 3. Ngắt kết nối
     EnterCriticalSection(&cs_clients);
+    char disconnected_user[50];
+    strcpy(disconnected_user, clients[client_index].username);
+    int was_logged_in = clients[client_index].is_logged_in;
     clients[client_index].socket = 0;
     LeaveCriticalSection(&cs_clients);
+    
+    // Tăng lobby version nếu user đã login
+    if (was_logged_in && strlen(disconnected_user) > 0) {
+        EnterCriticalSection(&cs_lobby);
+        lobby_version++;
+        printf("[Server] User %s disconnected, lobby_version=%d\n", disconnected_user, lobby_version);
+        LeaveCriticalSection(&cs_lobby);
+    }
+    
     closesocket(client_socket);
     return 0;
 }
@@ -1029,6 +1323,7 @@ int main() {
     InitializeCriticalSection(&cs_clients);
     InitializeCriticalSection(&cs_games);
     InitializeCriticalSection(&cs_history);
+    InitializeCriticalSection(&cs_lobby);
     
     // Khởi tạo game sessions và history
     for (int i = 0; i < MAX_GAME_SESSIONS; i++) {
