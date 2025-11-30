@@ -1,0 +1,247 @@
+[
+  {
+    "id": 1,
+    "question": "Thu do cua Viet Nam la gi?",
+    "options": ["Ha Noi", "TP. HCM", "Da Nang", "Hai Phong"],
+    "answer_index": 0,
+    "difficulty": "easy"
+  },
+  {
+    "id": 2,
+    "question": "CPU la viet tat cua tu gi?",
+    "options": ["Central Processing Unit", "Control Panel Unit", "Core Power Unit", "Central Print Utility"],
+    "answer_index": 0,
+    "difficulty": "easy"
+  },
+  {
+    "id": 3,
+    "question": "1 + 1 = ?",
+    "options": ["1", "2", "3", "4"],
+    "answer_index": 1,
+    "difficulty": "easy"
+  },
+  {
+    "id": 4,
+    "question": "Hanh tinh nao gan Mat Troi nhat?",
+    "options": ["Sao Kim", "Sao Hoa", "Sao Thuy", "Trai Dat"],
+    "answer_index": 2,
+    "difficulty": "medium"
+  },
+  {
+    "id": 5,
+    "question": "Python ra doi nam nao?",
+    "options": ["1989", "1991", "1995", "2000"],
+    "answer_index": 1,
+    "difficulty": "medium"
+  },
+  {
+    "id": 6,
+    "question": "Cong thuc tinh dien tich hinh tron la gi?",
+    "options": ["π*r", "2*π*r", "π*r²", "4*π*r²"],
+    "answer_index": 2,
+    "difficulty": "easy"
+  },
+  {
+    "id": 7,
+    "question": "RAM la bo nho gi?",
+    "options": ["Bo nho tam thoi", "Bo nho vinh vien", "Bo nho flash", "Bo nho cache"],
+    "answer_index": 0,
+    "difficulty": "easy"
+  },
+  {
+    "id": 8,
+    "question": "He dieu hanh Linux dau tien ra doi nam nao?",
+    "options": ["1989", "1991", "1995", "2001"],
+    "answer_index": 1,
+    "difficulty": "hard"
+  },
+  {
+    "id": 9,
+    "question": "Trong lap trinh, Big-O notation dung de do luong gi?",
+    "options": ["Kich thuoc file", "Do phuc tap thuat toan", "So dong code", "So luong bien"],
+    "answer_index": 1,
+    "difficulty": "hard"
+  },
+  {
+    "id": 10,
+    "question": "HTTP status code 404 co nghia la gi?",
+    "options": ["Server loi", "Thanh cong", "Khong tim thay trang", "Khong co quyen"],
+    "answer_index": 2,
+    "difficulty": "medium"
+  },
+  {
+    "id": 11,
+    "question": "Trong Co so du lieu, khoa chinh (Primary Key) la gi?",
+    "options": ["Cot co the trung lap", "Cot duy nhat xac dinh ban ghi", "Cot luu mat khau", "Cot tu tang"],
+    "answer_index": 1,
+    "difficulty": "medium"
+  },
+  {
+    "id": 12,
+    "question": "IPv6 co bao nhieu bit?",
+    "options": ["32 bit", "64 bit", "128 bit", "256 bit"],
+    "answer_index": 2,
+    "difficulty": "hard"
+  },
+  {
+    "id": 13,
+    "question": "2^10 bang bao nhieu?",
+    "options": ["512", "1024", "2048", "4096"],
+    "answer_index": 1,
+    "difficulty": "easy"
+  },
+  {
+    "id": 14,
+    "question": "Trong lap trinh huong doi tuong, Polymorphism co nghia la gi?",
+    "options": ["Dong goi du lieu", "Da hinh", "Ke thua", "Truu tuong"],
+    "answer_index": 1,
+    "difficulty": "hard"
+  },
+  {
+    "id": 15,
+    "question": "JSON la viet tat cua gi?",
+    "options": ["JavaScript Object Notation", "Java Serialized Object Network", "Just Simple Object Name", "JavaScript Online Network"],
+    "answer_index": 0,
+    "difficulty": "medium"
+  },
+  {
+    "id": 16,
+    "question": "Nguyen to hoa hoc cua nuoc la gi?",
+    "options": ["H2O", "CO2", "O2", "N2"],
+    "answer_index": 0,
+    "difficulty": "easy"
+  },
+  {
+    "id": 17,
+    "question": "Dong vat nao chay nhanh nhat the gioi?",
+    "options": ["Su tu", "Bao", "Ngua", "Loc"],
+    "answer_index": 1,
+    "difficulty": "medium"
+  },
+  {
+    "id": 18,
+    "question": "AI (Artificial Intelligence) la gi?",
+    "options": ["Tri tue nhan tao", "Am thanh", "Anh sang", "Dong co"],
+    "answer_index": 0,
+    "difficulty": "easy"
+  },
+  {
+    "id": 19,
+    "question": "Stack trong cau truc du lieu hoat dong theo nguyen tac nao?",
+    "options": ["FIFO", "LIFO", "Random", "Priority"],
+    "answer_index": 1,
+    "difficulty": "medium"
+  },
+  {
+    "id": 20,
+    "question": "Ngon ngu lap trinh nao duoc su dung nhieu nhat cho web frontend?",
+    "options": ["Python", "Java", "JavaScript", "C++"],
+    "answer_index": 2,
+    "difficulty": "easy"
+  },
+  {
+    "id": 21,
+    "question": "DNA la viet tat cua gi?",
+    "options": ["Deoxyribonucleic Acid", "Digital Network Access", "Data Network Array", "Direct Neural Activity"],
+    "answer_index": 0,
+    "difficulty": "hard"
+  },
+  {
+    "id": 22,
+    "question": "Chau luc nao co dien tich lon nhat?",
+    "options": ["Chau A", "Chau Phi", "Chau My", "Chau Dai Duong"],
+    "answer_index": 0,
+    "difficulty": "easy"
+  },
+  {
+    "id": 23,
+    "question": "Bitcoin la gi?",
+    "options": ["Tien ao", "Ngan hang", "Cong ty", "Tinh thanh"],
+    "answer_index": 0,
+    "difficulty": "easy"
+  },
+  {
+    "id": 24,
+    "question": "Trong SQL, lenh nao dung de truy van du lieu?",
+    "options": ["INSERT", "UPDATE", "SELECT", "DELETE"],
+    "answer_index": 2,
+    "difficulty": "medium"
+  },
+  {
+    "id": 25,
+    "question": "Toc do anh sang trong chan khong la bao nhieu?",
+    "options": ["300,000 km/s", "150,000 km/s", "450,000 km/s", "100,000 km/s"],
+    "answer_index": 0,
+    "difficulty": "hard"
+  },
+  {
+    "id": 26,
+    "question": "Git la gi?",
+    "options": ["He thong quan ly phien ban", "Ngon ngu lap trinh", "Co so du lieu", "Trinh duyet web"],
+    "answer_index": 0,
+    "difficulty": "medium"
+  },
+  {
+    "id": 27,
+    "question": "Nui cao nhat the gioi la nui nao?",
+    "options": ["Phu Si", "Everest", "Kilimanjaro", "K2"],
+    "answer_index": 1,
+    "difficulty": "easy"
+  },
+  {
+    "id": 28,
+    "question": "Machine Learning thuoc linh vuc nao?",
+    "options": ["Co khi", "Dien tu", "Tri tue nhan tao", "Hoa hoc"],
+    "answer_index": 2,
+    "difficulty": "medium"
+  },
+  {
+    "id": 29,
+    "question": "Port mac dinh cua HTTPS la bao nhieu?",
+    "options": ["80", "443", "8080", "3000"],
+    "answer_index": 1,
+    "difficulty": "hard"
+  },
+  {
+    "id": 30,
+    "question": "Blockchain la cong nghe nen tang cua loai tien nao?",
+    "options": ["Tien giay", "Cryptocurrency", "Vang", "Bac"],
+    "answer_index": 1,
+    "difficulty": "medium"
+  },
+  {
+    "id": 31,
+    "question": "Framework React duoc phat trien boi cong ty nao?",
+    "options": ["Google", "Microsoft", "Facebook", "Apple"],
+    "answer_index": 2,
+    "difficulty": "medium"
+  },
+  {
+    "id": 32,
+    "question": "API la viet tat cua gi?",
+    "options": ["Application Programming Interface", "Advanced Program Integration", "Automated Process Interaction", "Applied Platform Instruction"],
+    "answer_index": 0,
+    "difficulty": "medium"
+  },
+  {
+    "id": 33,
+    "question": "Trong mang may tinh, DNS dung de lam gi?",
+    "options": ["Bao mat", "Chuyen doi ten mien thanh IP", "Nen du lieu", "Luu tru file"],
+    "answer_index": 1,
+    "difficulty": "hard"
+  },
+  {
+    "id": 34,
+    "question": "Ngon ngu lap trinh nao duoc biet den voi mascot la con ran?",
+    "options": ["Java", "Python", "Ruby", "Go"],
+    "answer_index": 1,
+    "difficulty": "easy"
+  },
+  {
+    "id": 35,
+    "question": "Cloud Computing la gi?",
+    "options": ["Dien toan dam may", "Phan mem diet virus", "Trinh duyet web", "He dieu hanh"],
+    "answer_index": 0,
+    "difficulty": "easy"
+  }
+]   

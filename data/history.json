@@ -1,0 +1,25 @@
+[{
+		"game_key":	1764486994970265,
+		"player1":	"tung",
+		"player2":	"khue",
+		"score1":	404,
+		"score2":	326,
+		"total_questions":	5,
+		"timestamp":	1764486999
+	}, {
+		"game_key":	1764487038013437,
+		"player1":	"tung",
+		"player2":	"khue",
+		"score1":	404,
+		"score2":	405,
+		"total_questions":	5,
+		"timestamp":	1764487042
+	}, {
+		"game_key":	1764487407382406,
+		"player1":	"bach",
+		"player2":	"tung",
+		"score1":	409,
+		"score2":	408,
+		"total_questions":	5,
+		"timestamp":	1764487411
+	}]
