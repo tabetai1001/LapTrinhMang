@@ -10,8 +10,8 @@
 #include <winsock2.h>
 #include <windows.h> 
 
-#include "protocol.h"
-#include "cJSON.h"
+#include "../common/protocol.h"
+#include "../common/cJSON.h"
 
 
 

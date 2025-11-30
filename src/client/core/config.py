@@ -1,0 +1,16 @@
+# src/client/core/config.py
+
+# --- THEME COLORS ---
+BG_PRIMARY = "#0f3460"
+BG_SECONDARY = "#533483"
+ACCENT_COLOR = "#e94560"
+SUCCESS_COLOR = "#06d6a0"
+WARNING_COLOR = "#ffd166"
+DANGER_COLOR = "#ef476f"
+TEXT_LIGHT = "#ffffff"
+TEXT_DARK = "#2b2d42"
+CARD_BG = "#edf2f4"
+
+# --- GAME CONSTANTS ---
+DEFAULT_IP = "127.0.0.1"
+DEFAULT_PORT = 5555

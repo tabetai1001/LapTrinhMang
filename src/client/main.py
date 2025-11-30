@@ -1,0 +1,80 @@
+# src/client/main.py
+import tkinter as tk
+from tkinter import messagebox
+from core.network import NetworkManager
+from core.config import *
+from ui.view_auth import AuthView
+from ui.view_lobby import LobbyView
+from ui.view_game import GameView
+from ui.view_history import HistoryView
+
+class ClientApp(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("Ai Là Triệu Phú - Online")
+        self.geometry("800x600")
+        self.configure(bg=BG_PRIMARY)
+        
+        # --- Core ---
+        self.network = NetworkManager()
+        self.current_user = None
+        self.is_in_game = False
+        self.is_polling = False
+        
+        # --- UI Manager ---
+        self.container = tk.Frame(self, bg=BG_PRIMARY)
+        self.container.pack(side="top", fill="both", expand=True)
+        
+        self.frames = {}
+        self.init_views()
+        self.show_frame("AuthView")
+
+    def init_views(self):
+        for V in (AuthView, LobbyView, GameView, HistoryView):
+            page_name = V.__name__
+            frame = V(parent=self.container, controller=self)
+            self.frames[page_name] = frame
+            frame.grid(row=0, column=0, sticky="nsew")
+
+    def show_frame(self, page_name):
+        frame = self.frames[page_name]
+        frame.tkraise()
+        if hasattr(frame, "on_show"):
+            frame.on_show()
+
+    def start_polling(self):
+        self.is_polling = True
+        self.poll_server()
+
+    def poll_server(self):
+        if not self.is_polling: return
+        
+        try:
+            res = self.network.send_request({"type": "POLL"})
+            msg_type = res.get("type")
+            
+            if msg_type == "RECEIVE_INVITE":
+                inviter = res.get("from")
+                ans = messagebox.askyesno("Thách đấu", f"{inviter} muốn thách đấu bạn?")
+                if ans:
+                    self.network.send_request({"type": "ACCEPT_INVITE", "from": inviter})
+                else:
+                    self.network.send_request({"type": "REJECT_INVITE", "from": inviter})
+            
+            elif msg_type == "GAME_START":
+                opponent = res.get("opponent")
+                self.frames["GameView"].start_game(opponent)
+                self.show_frame("GameView")
+                
+            elif msg_type == "LOBBY_LIST":
+                if hasattr(self.frames["LobbyView"], "update_list"):
+                    self.frames["LobbyView"].update_list(res.get("players", []))
+                    
+        except Exception as e:
+            print(f"Polling error: {e}")
+            
+        self.after(1000, self.poll_server)
+
+if __name__ == "__main__":
+    app = ClientApp()
+    app.mainloop()
