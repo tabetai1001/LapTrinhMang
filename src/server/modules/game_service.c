@@ -9,7 +9,7 @@
 #include "../include/game_service.h"
 #include "../include/data_manager.h"
 
-#define MAX_TIME_PER_QUESTION 15
+#define MAX_TIME_PER_QUESTION 120
 #define BASE_SCORE 100
 
 const int PRIZE_LADDER[15] = {
@@ -158,9 +158,15 @@ int create_game_session(const char* p1, const char* p2, int num_questions) {
 
 int calculate_score(int is_correct, double time_taken) {
     if (!is_correct) return 0;
-    // Trả lời càng nhanh càng nhiều điểm (Tối đa BASE_SCORE, tối thiểu 10%)
-    double time_factor = 1.0 - (time_taken / MAX_TIME_PER_QUESTION);
+    
+    // Công thức: 100 điểm trừ dần theo thời gian
+    // Trả lời càng nhanh = điểm càng cao (tối đa 100, tối thiểu 10)
+    double time_factor = 1.0 - (time_taken / (double)MAX_TIME_PER_QUESTION);
+    
+    // Đảm bảo factor trong khoảng [0.1, 1.0]
+    if (time_factor > 1.0) time_factor = 1.0;
     if (time_factor < 0.1) time_factor = 0.1;
+    
     return (int)(BASE_SCORE * time_factor);
 }
 

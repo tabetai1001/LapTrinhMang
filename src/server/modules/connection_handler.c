@@ -570,7 +570,16 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                  if (strcmp(game_history[i].player1, clients[client_index].username) == 0 ||
                      strcmp(game_history[i].player2, clients[client_index].username) == 0) {
                      cJSON *item = cJSON_CreateObject();
-                     // ... (copy field)
+                     
+                     // Thêm đầy đủ các field
+                     cJSON_AddNumberToObject(item, "game_key", (double)game_history[i].game_key);
+                     cJSON_AddStringToObject(item, "player1", game_history[i].player1);
+                     cJSON_AddStringToObject(item, "player2", game_history[i].player2);
+                     cJSON_AddNumberToObject(item, "score1", game_history[i].score1);
+                     cJSON_AddNumberToObject(item, "score2", game_history[i].score2);
+                     cJSON_AddNumberToObject(item, "total_questions", game_history[i].total_questions);
+                     cJSON_AddNumberToObject(item, "timestamp", (double)game_history[i].finished_time);
+                     
                      int is_p1 = (strcmp(game_history[i].player1, clients[client_index].username)==0);
                      int my_s = is_p1 ? game_history[i].score1 : game_history[i].score2;
                      int opp_s = is_p1 ? game_history[i].score2 : game_history[i].score1;
