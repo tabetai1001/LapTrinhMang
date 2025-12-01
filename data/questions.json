@@ -1,247 +1,756 @@
 [
-  {
-    "id": 1,
-    "question": "Thu do cua Viet Nam la gi?",
-    "options": ["Ha Noi", "TP. HCM", "Da Nang", "Hai Phong"],
-    "answer_index": 0,
-    "difficulty": "easy"
-  },
-  {
-    "id": 2,
-    "question": "CPU la viet tat cua tu gi?",
-    "options": ["Central Processing Unit", "Control Panel Unit", "Core Power Unit", "Central Print Utility"],
-    "answer_index": 0,
-    "difficulty": "easy"
-  },
-  {
-    "id": 3,
-    "question": "1 + 1 = ?",
-    "options": ["1", "2", "3", "4"],
-    "answer_index": 1,
-    "difficulty": "easy"
-  },
-  {
-    "id": 4,
-    "question": "Hanh tinh nao gan Mat Troi nhat?",
-    "options": ["Sao Kim", "Sao Hoa", "Sao Thuy", "Trai Dat"],
-    "answer_index": 2,
-    "difficulty": "medium"
-  },
-  {
-    "id": 5,
-    "question": "Python ra doi nam nao?",
-    "options": ["1989", "1991", "1995", "2000"],
-    "answer_index": 1,
-    "difficulty": "medium"
-  },
-  {
-    "id": 6,
-    "question": "Cong thuc tinh dien tich hinh tron la gi?",
-    "options": ["π*r", "2*π*r", "π*r²", "4*π*r²"],
-    "answer_index": 2,
-    "difficulty": "easy"
-  },
-  {
-    "id": 7,
-    "question": "RAM la bo nho gi?",
-    "options": ["Bo nho tam thoi", "Bo nho vinh vien", "Bo nho flash", "Bo nho cache"],
-    "answer_index": 0,
-    "difficulty": "easy"
-  },
-  {
-    "id": 8,
-    "question": "He dieu hanh Linux dau tien ra doi nam nao?",
-    "options": ["1989", "1991", "1995", "2001"],
-    "answer_index": 1,
-    "difficulty": "hard"
-  },
-  {
-    "id": 9,
-    "question": "Trong lap trinh, Big-O notation dung de do luong gi?",
-    "options": ["Kich thuoc file", "Do phuc tap thuat toan", "So dong code", "So luong bien"],
-    "answer_index": 1,
-    "difficulty": "hard"
-  },
-  {
-    "id": 10,
-    "question": "HTTP status code 404 co nghia la gi?",
-    "options": ["Server loi", "Thanh cong", "Khong tim thay trang", "Khong co quyen"],
-    "answer_index": 2,
-    "difficulty": "medium"
-  },
-  {
-    "id": 11,
-    "question": "Trong Co so du lieu, khoa chinh (Primary Key) la gi?",
-    "options": ["Cot co the trung lap", "Cot duy nhat xac dinh ban ghi", "Cot luu mat khau", "Cot tu tang"],
-    "answer_index": 1,
-    "difficulty": "medium"
-  },
-  {
-    "id": 12,
-    "question": "IPv6 co bao nhieu bit?",
-    "options": ["32 bit", "64 bit", "128 bit", "256 bit"],
-    "answer_index": 2,
-    "difficulty": "hard"
-  },
-  {
-    "id": 13,
-    "question": "2^10 bang bao nhieu?",
-    "options": ["512", "1024", "2048", "4096"],
-    "answer_index": 1,
-    "difficulty": "easy"
-  },
-  {
-    "id": 14,
-    "question": "Trong lap trinh huong doi tuong, Polymorphism co nghia la gi?",
-    "options": ["Dong goi du lieu", "Da hinh", "Ke thua", "Truu tuong"],
-    "answer_index": 1,
-    "difficulty": "hard"
-  },
-  {
-    "id": 15,
-    "question": "JSON la viet tat cua gi?",
-    "options": ["JavaScript Object Notation", "Java Serialized Object Network", "Just Simple Object Name", "JavaScript Online Network"],
-    "answer_index": 0,
-    "difficulty": "medium"
-  },
-  {
-    "id": 16,
-    "question": "Nguyen to hoa hoc cua nuoc la gi?",
-    "options": ["H2O", "CO2", "O2", "N2"],
-    "answer_index": 0,
-    "difficulty": "easy"
-  },
-  {
-    "id": 17,
-    "question": "Dong vat nao chay nhanh nhat the gioi?",
-    "options": ["Su tu", "Bao", "Ngua", "Loc"],
-    "answer_index": 1,
-    "difficulty": "medium"
-  },
-  {
-    "id": 18,
-    "question": "AI (Artificial Intelligence) la gi?",
-    "options": ["Tri tue nhan tao", "Am thanh", "Anh sang", "Dong co"],
-    "answer_index": 0,
-    "difficulty": "easy"
-  },
-  {
-    "id": 19,
-    "question": "Stack trong cau truc du lieu hoat dong theo nguyen tac nao?",
-    "options": ["FIFO", "LIFO", "Random", "Priority"],
-    "answer_index": 1,
-    "difficulty": "medium"
-  },
-  {
-    "id": 20,
-    "question": "Ngon ngu lap trinh nao duoc su dung nhieu nhat cho web frontend?",
-    "options": ["Python", "Java", "JavaScript", "C++"],
-    "answer_index": 2,
-    "difficulty": "easy"
-  },
-  {
-    "id": 21,
-    "question": "DNA la viet tat cua gi?",
-    "options": ["Deoxyribonucleic Acid", "Digital Network Access", "Data Network Array", "Direct Neural Activity"],
-    "answer_index": 0,
-    "difficulty": "hard"
-  },
-  {
-    "id": 22,
-    "question": "Chau luc nao co dien tich lon nhat?",
-    "options": ["Chau A", "Chau Phi", "Chau My", "Chau Dai Duong"],
-    "answer_index": 0,
-    "difficulty": "easy"
-  },
-  {
-    "id": 23,
-    "question": "Bitcoin la gi?",
-    "options": ["Tien ao", "Ngan hang", "Cong ty", "Tinh thanh"],
-    "answer_index": 0,
-    "difficulty": "easy"
-  },
-  {
-    "id": 24,
-    "question": "Trong SQL, lenh nao dung de truy van du lieu?",
-    "options": ["INSERT", "UPDATE", "SELECT", "DELETE"],
-    "answer_index": 2,
-    "difficulty": "medium"
-  },
-  {
-    "id": 25,
-    "question": "Toc do anh sang trong chan khong la bao nhieu?",
-    "options": ["300,000 km/s", "150,000 km/s", "450,000 km/s", "100,000 km/s"],
-    "answer_index": 0,
-    "difficulty": "hard"
-  },
-  {
-    "id": 26,
-    "question": "Git la gi?",
-    "options": ["He thong quan ly phien ban", "Ngon ngu lap trinh", "Co so du lieu", "Trinh duyet web"],
-    "answer_index": 0,
-    "difficulty": "medium"
-  },
-  {
-    "id": 27,
-    "question": "Nui cao nhat the gioi la nui nao?",
-    "options": ["Phu Si", "Everest", "Kilimanjaro", "K2"],
-    "answer_index": 1,
-    "difficulty": "easy"
-  },
-  {
-    "id": 28,
-    "question": "Machine Learning thuoc linh vuc nao?",
-    "options": ["Co khi", "Dien tu", "Tri tue nhan tao", "Hoa hoc"],
-    "answer_index": 2,
-    "difficulty": "medium"
-  },
-  {
-    "id": 29,
-    "question": "Port mac dinh cua HTTPS la bao nhieu?",
-    "options": ["80", "443", "8080", "3000"],
-    "answer_index": 1,
-    "difficulty": "hard"
-  },
-  {
-    "id": 30,
-    "question": "Blockchain la cong nghe nen tang cua loai tien nao?",
-    "options": ["Tien giay", "Cryptocurrency", "Vang", "Bac"],
-    "answer_index": 1,
-    "difficulty": "medium"
-  },
-  {
-    "id": 31,
-    "question": "Framework React duoc phat trien boi cong ty nao?",
-    "options": ["Google", "Microsoft", "Facebook", "Apple"],
-    "answer_index": 2,
-    "difficulty": "medium"
-  },
-  {
-    "id": 32,
-    "question": "API la viet tat cua gi?",
-    "options": ["Application Programming Interface", "Advanced Program Integration", "Automated Process Interaction", "Applied Platform Instruction"],
-    "answer_index": 0,
-    "difficulty": "medium"
-  },
-  {
-    "id": 33,
-    "question": "Trong mang may tinh, DNS dung de lam gi?",
-    "options": ["Bao mat", "Chuyen doi ten mien thanh IP", "Nen du lieu", "Luu tru file"],
-    "answer_index": 1,
-    "difficulty": "hard"
-  },
-  {
-    "id": 34,
-    "question": "Ngon ngu lap trinh nao duoc biet den voi mascot la con ran?",
-    "options": ["Java", "Python", "Ruby", "Go"],
-    "answer_index": 1,
-    "difficulty": "easy"
-  },
-  {
-    "id": 35,
-    "question": "Cloud Computing la gi?",
-    "options": ["Dien toan dam may", "Phan mem diet virus", "Trinh duyet web", "He dieu hanh"],
-    "answer_index": 0,
-    "difficulty": "easy"
-  }
-]   
+    {
+        "id": 1,
+        "question": "What is the standard SI unit for temperature?",
+        "options": [
+            "Rankine",
+            "Kelvin",
+            "Fahrenheit",
+            "Celsius"
+        ],
+        "answer_index": 1,
+        "difficulty": "easy",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 2,
+        "question": "71% of the Earth's surface is made up of",
+        "options": [
+            "Continents",
+            "Deserts",
+            "Water",
+            "Forests"
+        ],
+        "answer_index": 2,
+        "difficulty": "easy",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 3,
+        "question": "What is the standard SI unit for distance?",
+        "options": [
+            "Angstrom",
+            "Foot",
+            "Metre",
+            "Fathom"
+        ],
+        "answer_index": 2,
+        "difficulty": "easy",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 4,
+        "question": "Who discovered the Law of Gravity?",
+        "options": [
+            "Charles Darwin",
+            "Albert Einstein",
+            "Sir Isaac Newton",
+            "Galileo Galilei"
+        ],
+        "answer_index": 2,
+        "difficulty": "easy",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 5,
+        "question": "What name is given to all baby marsupials?",
+        "options": [
+            "Joey",
+            "Pup",
+            "Calf",
+            "Cub"
+        ],
+        "answer_index": 0,
+        "difficulty": "easy",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 6,
+        "question": "Which type of rock is created by intense heat AND pressure?",
+        "options": [
+            "Sedimentary",
+            "Igneous",
+            "Diamond",
+            "Metamorphic"
+        ],
+        "answer_index": 3,
+        "difficulty": "easy",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 7,
+        "question": "What produces the green colour of most plant leaves?",
+        "options": [
+            "Light refraction",
+            "UV radiation",
+            "Natural pigments",
+            "Chlorophyll"
+        ],
+        "answer_index": 3,
+        "difficulty": "easy",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 8,
+        "question": "What lies at the center of our galaxy?",
+        "options": [
+            "A black hole",
+            "A supernova",
+            "A quasar",
+            "A wormhole"
+        ],
+        "answer_index": 0,
+        "difficulty": "easy",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 9,
+        "question": "What does the letter 'S' stand for in 'NASA'?",
+        "options": [
+            "Space",
+            "Star",
+            "Science",
+            "Society"
+        ],
+        "answer_index": 0,
+        "difficulty": "easy",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 10,
+        "question": "What is the fastest  land animal?",
+        "options": [
+            "Thomson’s Gazelle",
+            "Pronghorn Antelope",
+            "Cheetah",
+            "Lion"
+        ],
+        "answer_index": 2,
+        "difficulty": "easy",
+        "category": "Animals"
+    },
+    {
+        "id": 11,
+        "question": "What is the collective noun for a group of crows?",
+        "options": [
+            "Herd",
+            "Gaggle",
+            "Pack",
+            "Murder"
+        ],
+        "answer_index": 3,
+        "difficulty": "easy",
+        "category": "Animals"
+    },
+    {
+        "id": 12,
+        "question": "Snakes and lizards are known to flick their tongue, this behavior is to?",
+        "options": [
+            "Threaten other species",
+            "Attract female mates",
+            "Taste the sweet air",
+            "Capture scent particles"
+        ],
+        "answer_index": 3,
+        "difficulty": "easy",
+        "category": "Animals"
+    },
+    {
+        "id": 13,
+        "question": "Hippocampus is the Latin name for which marine creature?",
+        "options": [
+            "Seahorse",
+            "Whale",
+            "Dolphin",
+            "Octopus"
+        ],
+        "answer_index": 0,
+        "difficulty": "easy",
+        "category": "Animals"
+    },
+    {
+        "id": 14,
+        "question": "What is Grumpy Cat's real name?",
+        "options": [
+            "Tardar Sauce",
+            "Minnie",
+            "Sauce",
+            "Broccoli"
+        ],
+        "answer_index": 0,
+        "difficulty": "easy",
+        "category": "Animals"
+    },
+    {
+        "id": 15,
+        "question": "What colour is the female blackbird?",
+        "options": [
+            "Yellow",
+            "Black",
+            "White",
+            "Brown"
+        ],
+        "answer_index": 3,
+        "difficulty": "easy",
+        "category": "Animals"
+    },
+    {
+        "id": 16,
+        "question": "What is the name of a rabbit's abode?",
+        "options": [
+            "Nest",
+            "Den",
+            "Burrow",
+            "Dray"
+        ],
+        "answer_index": 2,
+        "difficulty": "easy",
+        "category": "Animals"
+    },
+    {
+        "id": 17,
+        "question": "By definition, where does an abyssopelagic animal live?",
+        "options": [
+            "Inside a tree",
+            "On top of a mountain",
+            "In the desert",
+            "At the bottom of the ocean"
+        ],
+        "answer_index": 3,
+        "difficulty": "easy",
+        "category": "Animals"
+    },
+    {
+        "id": 18,
+        "question": "What is the scientific name for modern day humans?",
+        "options": [
+            "Homo Erectus",
+            "Homo Sapiens",
+            "Homo Ergaster",
+            "Homo Neanderthalensis"
+        ],
+        "answer_index": 1,
+        "difficulty": "easy",
+        "category": "Animals"
+    },
+    {
+        "id": 19,
+        "question": "What are human nails made of?",
+        "options": [
+            "Bone",
+            "Calcium",
+            "Keratin",
+            "Chitin"
+        ],
+        "answer_index": 2,
+        "difficulty": "medium",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 20,
+        "question": "Where did the Great Storm of 1987 make landfall at, first?",
+        "options": [
+            "The Midlands",
+            "Wales",
+            "Cornwall",
+            "Surrey"
+        ],
+        "answer_index": 2,
+        "difficulty": "medium",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 21,
+        "question": "Which one of these scientists conducted the Gold Foil Experiment which concluded that atoms are mostly made of empty space?",
+        "options": [
+            "Joseph John Thomson",
+            "Archimedes",
+            "Ernest Rutherford",
+            "Niels Henrik David Bohr"
+        ],
+        "answer_index": 2,
+        "difficulty": "medium",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 22,
+        "question": "The medical condition osteoporosis affects which part of the body?",
+        "options": [
+            "Heart",
+            "Brain",
+            "Skin",
+            "Bones"
+        ],
+        "answer_index": 3,
+        "difficulty": "medium",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 23,
+        "question": "Gannymede is the largest moon of which planet?",
+        "options": [
+            "Neptune",
+            "Uranus",
+            "Mars",
+            "Jupiter"
+        ],
+        "answer_index": 3,
+        "difficulty": "medium",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 24,
+        "question": "What is the colour of unoxidized blood?",
+        "options": [
+            "Blue",
+            "Red",
+            "Green",
+            "Purple"
+        ],
+        "answer_index": 1,
+        "difficulty": "medium",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 25,
+        "question": "In human biology, a circadium rhythm relates to a period of roughly how many hours?",
+        "options": [
+            "8",
+            "16",
+            "32",
+            "24"
+        ],
+        "answer_index": 3,
+        "difficulty": "medium",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 26,
+        "question": "Which desert is the only desert in the world where the \"Saguaro\" cactus grows indigenously?",
+        "options": [
+            "The Yuma Desert",
+            "The Arabian Desert",
+            "The Gobi Desert",
+            "The Sonoran Desert"
+        ],
+        "answer_index": 3,
+        "difficulty": "medium",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 27,
+        "question": "Au on the Periodic Table refers to which element?",
+        "options": [
+            "Nickel",
+            "Oxygen",
+            "Silver",
+            "Gold"
+        ],
+        "answer_index": 3,
+        "difficulty": "medium",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 28,
+        "question": "Which chemical element has the lowest boiling point?",
+        "options": [
+            "Hydrogen",
+            "Nitrogen",
+            "Helium",
+            "Neon"
+        ],
+        "answer_index": 2,
+        "difficulty": "medium",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 29,
+        "question": "Which animal was part of an Russian domestication experiment in 1959?",
+        "options": [
+            "Foxes",
+            "Alligators",
+            "Pigeons",
+            "Bears"
+        ],
+        "answer_index": 0,
+        "difficulty": "medium",
+        "category": "Animals"
+    },
+    {
+        "id": 30,
+        "question": "Cashmere is the wool from which kind of animal?",
+        "options": [
+            "Camel",
+            "Goat",
+            "Llama",
+            "Sheep"
+        ],
+        "answer_index": 1,
+        "difficulty": "medium",
+        "category": "Animals"
+    },
+    {
+        "id": 31,
+        "question": "What is the scientific name of the Common Chimpanzee?",
+        "options": [
+            "Panthera leo",
+            "Gorilla gorilla",
+            "Pan troglodytes",
+            "Pan paniscus"
+        ],
+        "answer_index": 2,
+        "difficulty": "medium",
+        "category": "Animals"
+    },
+    {
+        "id": 32,
+        "question": "Which of the following is NOT a venomous snake?",
+        "options": [
+            "Reticulated python",
+            "Malayan Krait",
+            "Black mamba",
+            "Yellow bellied sea snake"
+        ],
+        "answer_index": 0,
+        "difficulty": "medium",
+        "category": "Animals"
+    },
+    {
+        "id": 33,
+        "question": "For what reason would a spotted hyena \"laugh\"?",
+        "options": [
+            "Exhaustion",
+            "Aggression",
+            "Excitement",
+            "Nervousness"
+        ],
+        "answer_index": 3,
+        "difficulty": "medium",
+        "category": "Animals"
+    },
+    {
+        "id": 34,
+        "question": "What is the collective noun for bears?",
+        "options": [
+            "Tribe",
+            "Sloth",
+            "Drove",
+            "Husk"
+        ],
+        "answer_index": 1,
+        "difficulty": "medium",
+        "category": "Animals"
+    },
+    {
+        "id": 35,
+        "question": "What is the scientific name for the \"Polar Bear\"?",
+        "options": [
+            "Ursus Maritimus",
+            "Ursus Arctos",
+            "Ursus Spelaeus",
+            "Polar Bear"
+        ],
+        "answer_index": 0,
+        "difficulty": "medium",
+        "category": "Animals"
+    },
+    {
+        "id": 36,
+        "question": "What is the name of the family that the domestic cat is a member of?",
+        "options": [
+            "Cat",
+            "Felidae",
+            "Felinae",
+            "Felis"
+        ],
+        "answer_index": 1,
+        "difficulty": "medium",
+        "category": "Animals"
+    },
+    {
+        "id": 37,
+        "question": "What does \"hippopotamus\" mean and in what langauge?",
+        "options": [
+            "River Horse (Greek)",
+            "River Horse (Latin)",
+            "Fat Pig (Greek)",
+            "Fat Pig (Latin)"
+        ],
+        "answer_index": 0,
+        "difficulty": "medium",
+        "category": "Animals"
+    },
+    {
+        "id": 38,
+        "question": "Which of the following is true when alligators are behaving territorially?",
+        "options": [
+            "Slap their tails on the ground",
+            "Open their jaws while making a clicking noise",
+            "They run full force at the threat",
+            "They bellow while showing their tail and neck"
+        ],
+        "answer_index": 3,
+        "difficulty": "medium",
+        "category": "Animals"
+    },
+    {
+        "id": 39,
+        "question": "What are the scales on all snakes and most lizards are made of?",
+        "options": [
+            "Keratin",
+            "Ecdysis",
+            "Ankyloglossia",
+            "Epidermis"
+        ],
+        "answer_index": 0,
+        "difficulty": "medium",
+        "category": "Animals"
+    },
+    {
+        "id": 40,
+        "question": "The dish Fugu, is made from what family of fish?",
+        "options": [
+            "Salmon",
+            "Pufferfish",
+            "Mackerel",
+            "Bass"
+        ],
+        "answer_index": 1,
+        "difficulty": "medium",
+        "category": "Animals"
+    },
+    {
+        "id": 41,
+        "question": "What is the collective noun for rats?",
+        "options": [
+            "Drift",
+            "Pack",
+            "Race",
+            "Mischief"
+        ],
+        "answer_index": 3,
+        "difficulty": "medium",
+        "category": "Animals"
+    },
+    {
+        "id": 42,
+        "question": "What is the standard SI unit for luminous intensity?",
+        "options": [
+            "Coulomb",
+            "Candela",
+            "Faraday",
+            "Lumen"
+        ],
+        "answer_index": 1,
+        "difficulty": "hard",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 43,
+        "question": "Which scientific unit is named after an Italian nobleman?",
+        "options": [
+            "Hertz",
+            "Volt",
+            "Pascal",
+            "Ohm"
+        ],
+        "answer_index": 1,
+        "difficulty": "hard",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 44,
+        "question": "What is the name for the auditory illusion of a note that seems to be rising infinitely?",
+        "options": [
+            "Glissandro Illusion",
+            "McGurck Effect",
+            "Shepard Tone",
+            "Fransen Effect"
+        ],
+        "answer_index": 2,
+        "difficulty": "hard",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 45,
+        "question": "Which of these is a semiconductor amplifying device?",
+        "options": [
+            "tube",
+            "P-N junction",
+            "transistor",
+            "diode"
+        ],
+        "answer_index": 2,
+        "difficulty": "hard",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 46,
+        "question": "What is the most potent toxin known?",
+        "options": [
+            "Botulinum toxin",
+            "Cyanide",
+            "Ricin",
+            "Asbestos"
+        ],
+        "answer_index": 0,
+        "difficulty": "hard",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 47,
+        "question": "On the Beaufort Scale of wind force, what wind name is given to number 8?",
+        "options": [
+            "Storm",
+            "Gale",
+            "Breeze",
+            "Hurricane"
+        ],
+        "answer_index": 1,
+        "difficulty": "hard",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 48,
+        "question": "The Western Lowland Gorilla is scientifically know as?",
+        "options": [
+            "Gorilla Beringei Graueri",
+            "Gorilla Gorilla Diehli",
+            "Gorilla Gorilla Gorilla",
+            "Gorilla Beringei Beringei"
+        ],
+        "answer_index": 2,
+        "difficulty": "hard",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 49,
+        "question": "How many protons are in an oxygen atom?",
+        "options": [
+            "Four",
+            "Two",
+            "Six",
+            "Eight"
+        ],
+        "answer_index": 3,
+        "difficulty": "hard",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 50,
+        "question": "Which major extinction event was caused by an asteroid collision and eliminated the majority of non-avian dinosaurs?",
+        "options": [
+            "Permian–Triassic",
+            "Cretaceous-Paleogene",
+            "Triassic–Jurassic",
+            "Ordovician–Silurian"
+        ],
+        "answer_index": 1,
+        "difficulty": "hard",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 51,
+        "question": "The word \"science\" stems from the word \"scire\" meaning what?",
+        "options": [
+            "To count",
+            "To measure",
+            "To know",
+            "To live"
+        ],
+        "answer_index": 2,
+        "difficulty": "hard",
+        "category": "Science &amp; Nature"
+    },
+    {
+        "id": 52,
+        "question": "Which species is a \"mountain chicken\"?",
+        "options": [
+            "Fly",
+            "Horse",
+            "Frog",
+            "Chicken"
+        ],
+        "answer_index": 2,
+        "difficulty": "hard",
+        "category": "Animals"
+    },
+    {
+        "id": 53,
+        "question": "What is the scientific name of the Budgerigar?",
+        "options": [
+            "Melopsittacus undulatus",
+            "Pyrrhura molinae",
+            "Nymphicus hollandicus",
+            "Ara macao"
+        ],
+        "answer_index": 0,
+        "difficulty": "hard",
+        "category": "Animals"
+    },
+    {
+        "id": 54,
+        "question": "Which of the following is another name for the \"Poecilotheria Metallica Tarantula\"?",
+        "options": [
+            "Hopper",
+            "Woebegone",
+            "Gooty",
+            "Silver Stripe"
+        ],
+        "answer_index": 2,
+        "difficulty": "hard",
+        "category": "Animals"
+    },
+    {
+        "id": 55,
+        "question": "What is the Gray Wolf's scientific name?",
+        "options": [
+            "Canis Latrans",
+            "Canis Aureus",
+            "Canis Lupus",
+            "Canis Lupus Lycaon"
+        ],
+        "answer_index": 2,
+        "difficulty": "hard",
+        "category": "Animals"
+    },
+    {
+        "id": 56,
+        "question": "What type of creature is a Bonobo?",
+        "options": [
+            "Wildcat",
+            "Ape",
+            "Parrot",
+            "Lion"
+        ],
+        "answer_index": 1,
+        "difficulty": "hard",
+        "category": "Animals"
+    },
+    {
+        "id": 57,
+        "question": "What scientific family does the Aardwolf belong to?",
+        "options": [
+            "Hyaenidae",
+            "Felidae",
+            "Eupleridae",
+            "Canidae"
+        ],
+        "answer_index": 0,
+        "difficulty": "hard",
+        "category": "Animals"
+    },
+    {
+        "id": 58,
+        "question": "To which biological phylum do all mammals, birds and reptiles belong?",
+        "options": [
+            "Annelida",
+            "Chordata",
+            "Placazoa",
+            "Echinodermata"
+        ],
+        "answer_index": 1,
+        "difficulty": "hard",
+        "category": "Animals"
+    }
+]

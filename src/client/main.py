@@ -1,4 +1,3 @@
-# src/client/main.py
 import tkinter as tk
 from tkinter import messagebox
 from core.network import NetworkManager
@@ -30,6 +29,7 @@ class ClientApp(tk.Tk):
         self.show_frame("AuthView")
 
     def init_views(self):
+        # Khởi tạo tất cả các màn hình
         for V in (AuthView, LobbyView, GameView, HistoryView):
             page_name = V.__name__
             frame = V(parent=self.container, controller=self)
@@ -39,6 +39,7 @@ class ClientApp(tk.Tk):
     def show_frame(self, page_name):
         frame = self.frames[page_name]
         frame.tkraise()
+        # Gọi hàm on_show nếu màn hình đó có định nghĩa (để refresh dữ liệu)
         if hasattr(frame, "on_show"):
             frame.on_show()
 
@@ -50,9 +51,11 @@ class ClientApp(tk.Tk):
         if not self.is_polling: return
         
         try:
+            # Gửi yêu cầu thăm dò server
             res = self.network.send_request({"type": "POLL"})
             msg_type = res.get("type")
             
+            # 1. Có người mời thách đấu
             if msg_type == "RECEIVE_INVITE":
                 inviter = res.get("from")
                 ans = messagebox.askyesno("Thách đấu", f"{inviter} muốn thách đấu bạn?")
@@ -61,11 +64,19 @@ class ClientApp(tk.Tk):
                 else:
                     self.network.send_request({"type": "REJECT_INVITE", "from": inviter})
             
+            # 2. Game bắt đầu (Do chấp nhận mời HOẶC bấm Chơi đơn)
             elif msg_type == "GAME_START":
                 opponent = res.get("opponent")
-                self.frames["GameView"].start_game(opponent)
-                self.show_frame("GameView")
+                # QUAN TRỌNG: Lấy mode từ server (PVP hoặc CLASSIC)
+                mode = res.get("mode", "PVP") 
                 
+                # Chỉ chuyển cảnh nếu chưa ở trong game
+                if not self.is_in_game:
+                    print(f"[Main] Starting game: {mode} vs {opponent}")
+                    self.frames["GameView"].start_game(opponent, mode=mode)
+                    self.show_frame("GameView")
+                
+            # 3. Cập nhật danh sách Lobby
             elif msg_type == "LOBBY_LIST":
                 if hasattr(self.frames["LobbyView"], "update_list"):
                     self.frames["LobbyView"].update_list(res.get("players", []))
@@ -73,6 +84,7 @@ class ClientApp(tk.Tk):
         except Exception as e:
             print(f"Polling error: {e}")
             
+        # Lặp lại sau 1 giây
         self.after(1000, self.poll_server)
 
 if __name__ == "__main__":

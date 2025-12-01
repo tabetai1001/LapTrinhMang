@@ -2,19 +2,22 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <windows.h>
-#include "protocol.h"
+// Include server_state.h đầu tiên vì nó chứa models.h (đã có winsock2.h)
+#include "../include/server_state.h" 
+#include "../../common/protocol.h"
+#include "../../common/cJSON.h"
 #include "../include/game_service.h"
-#include "../include/server_state.h"
 #include "../include/data_manager.h"
 
 #define MAX_TIME_PER_QUESTION 15
 #define BASE_SCORE 100
 
+// --- CÁC HÀM HELPER ---
+
 int compare_scores(const void *a, const void *b) {
     PlayerScore *p1 = (PlayerScore *)a;
     PlayerScore *p2 = (PlayerScore *)b;
-    return (p2->score - p1->score); // Giảm dần
+    return (p2->score - p1->score); // Sắp xếp giảm dần
 }
 
 int find_client_index(const char* username) {
@@ -26,82 +29,47 @@ int find_client_index(const char* username) {
     return -1;
 }
 
-void broadcast_lobby_update() {
-    printf("[Game] Broadcasting lobby update to all online clients\n");
-    
-    char *file_content = read_file(ACCOUNT_FILE);
-    if (!file_content) return;
-    
-    cJSON *accounts = cJSON_Parse(file_content);
-    if (!accounts || !cJSON_IsArray(accounts)) {
-        if (accounts) cJSON_Delete(accounts);
-        free(file_content);
-        return;
-    }
-    
-    EnterCriticalSection(&cs_clients);
-    
-    for (int client_idx = 0; client_idx < MAX_CLIENTS; client_idx++) {
-        if (clients[client_idx].socket == 0 || !clients[client_idx].is_logged_in) {
-            continue;
-        }
-        
-        cJSON *msg = cJSON_CreateObject();
-        cJSON_AddStringToObject(msg, "type", MSG_TYPE_LOBBY_LIST);
-        cJSON *arr = cJSON_CreateArray();
-        
-        cJSON *acc = NULL;
-        cJSON_ArrayForEach(acc, accounts) {
-            cJSON *username_json = cJSON_GetObjectItem(acc, "username");
-            if (username_json) {
-                char *username = username_json->valuestring;
-                
-                if (strcmp(username, clients[client_idx].username) == 0) continue;
-                
-                int is_online = 0;
-                int is_in_game = 0;
-                
-                for (int i = 0; i < MAX_CLIENTS; i++) {
-                    if (clients[i].socket != 0 && clients[i].is_logged_in && 
-                        strcmp(clients[i].username, username) == 0) {
-                        is_online = 1;
-                        is_in_game = clients[i].is_busy;
-                        break;
-                    }
+// Hàm nội bộ: Lấy ID câu hỏi ngẫu nhiên từ RAM theo độ khó
+// level: 1 (Dễ), 2 (TB), 3 (Khó)
+int get_random_question_id_by_level(int level, int *used_ids, int used_count) {
+    int candidates[MAX_QUESTIONS];
+    int count = 0;
+
+    for (int i = 0; i < question_count; i++) {
+        if (question_bank[i].difficulty == level) {
+            // Kiểm tra trùng
+            int is_used = 0;
+            for (int j = 0; j < used_count; j++) {
+                if (used_ids[j] == question_bank[i].id) {
+                    is_used = 1;
+                    break;
                 }
-                
-                cJSON *player_obj = cJSON_CreateObject();
-                cJSON_AddStringToObject(player_obj, "name", username);
-                
-                if (!is_online) cJSON_AddStringToObject(player_obj, "status", "OFFLINE");
-                else if (is_in_game) cJSON_AddStringToObject(player_obj, "status", "IN_GAME");
-                else cJSON_AddStringToObject(player_obj, "status", "FREE");
-                
-                cJSON_AddItemToArray(arr, player_obj);
+            }
+            
+            if (!is_used) {
+                candidates[count++] = question_bank[i].id;
             }
         }
-        
-        cJSON_AddItemToObject(msg, "players", arr);
-        
-        char *msg_str = cJSON_PrintUnformatted(msg);
-        send(clients[client_idx].socket, msg_str, strlen(msg_str), 0);
-        free(msg_str);
-        cJSON_Delete(msg);
     }
+
+    if (count == 0) return -1; // Hết câu hỏi loại này
     
-    LeaveCriticalSection(&cs_clients);
-    cJSON_Delete(accounts);
-    free(file_content);
+    int rand_idx = rand() % count;
+    return candidates[rand_idx];
 }
+
+// --- CÁC HÀM LOGIC GAME CHÍNH ---
 
 int create_game_session(const char* p1, const char* p2, int num_questions) {
     EnterCriticalSection(&cs_games);
     for (int i = 0; i < MAX_GAME_SESSIONS; i++) {
         if (!game_sessions[i].is_active) {
+            // Reset toàn bộ session
             memset(&game_sessions[i], 0, sizeof(GameSession));
             
+            // Tạo Game Key unique dựa trên thời gian
             long long game_key = (long long)GetTickCount64() + (long long)time(NULL) * 1000000LL + (i * 1000);
-            Sleep(1);
+            Sleep(1); // Delay nhỏ để tránh trùng key nếu tạo quá nhanh
             
             game_sessions[i].id = i;
             game_sessions[i].game_key = game_key;
@@ -110,22 +78,54 @@ int create_game_session(const char* p1, const char* p2, int num_questions) {
             game_sessions[i].total_questions = num_questions;
             game_sessions[i].is_active = 1;
             
-            for (int j = 0; j < MAX_QUESTIONS_PER_GAME; j++) {
-                game_sessions[i].used_question_ids[j] = -1;
-                game_sessions[i].player1_answers[j] = -1;
-                game_sessions[i].player2_answers[j] = -1;
+            // Reset mảng câu hỏi và câu trả lời
+            for (int k = 0; k < MAX_QUESTIONS_PER_GAME; k++) {
+                game_sessions[i].used_question_ids[k] = -1;
+                game_sessions[i].player1_answers[k] = -1;
+                game_sessions[i].player2_answers[k] = -1;
             }
+            
+            // Reset quyền trợ giúp (0: chưa dùng)
+            // Index 1-4 tương ứng với LIFELINE_ID
+            memset(game_sessions[i].p1_lifelines, 0, sizeof(game_sessions[i].p1_lifelines));
+            memset(game_sessions[i].p2_lifelines, 0, sizeof(game_sessions[i].p2_lifelines));
             
             unsigned int game_seed = (unsigned int)time(NULL) + i * 1000 + (unsigned int)(GetTickCount() % 10000);
             srand(game_seed);
             
+            // === TẠO BỘ CÂU HỎI THEO ĐỘ KHÓ ===
+            // Chiến thuật: Chia 3 phần (Dễ -> TB -> Khó)
             for (int j = 0; j < num_questions; j++) {
-                cJSON *question = get_random_question(game_sessions[i].used_question_ids, j);
-                if (question) {
-                    int qid = cJSON_GetObjectItem(question, "id")->valueint;
-                    game_sessions[i].used_question_ids[j] = qid;
-                    cJSON_Delete(question);
+                int level = 1; 
+                
+                if (num_questions >= 10) {
+                    // Nếu >= 10 câu: 30% Dễ, 40% TB, 30% Khó
+                    if (j >= num_questions * 0.3) level = 2;
+                    if (j >= num_questions * 0.7) level = 3;
+                } else {
+                    // Nếu ít câu (5 câu): 2 Dễ, 2 TB, 1 Khó
+                    if (j >= 2) level = 2;
+                    if (j >= 4) level = 3;
                 }
+
+                int qid = get_random_question_id_by_level(level, game_sessions[i].used_question_ids, j);
+                
+                // Fallback: Nếu hết câu khó thì lấy câu trung bình, hết TB thì lấy Dễ
+                if (qid == -1) qid = get_random_question_id_by_level(2, game_sessions[i].used_question_ids, j);
+                if (qid == -1) qid = get_random_question_id_by_level(1, game_sessions[i].used_question_ids, j);
+                
+                // Fallback cuối cùng: Lấy đại câu chưa dùng
+                if (qid == -1) {
+                     for(int z=0; z<question_count; z++) {
+                         int used = 0;
+                         for(int m=0; m<j; m++) if(game_sessions[i].used_question_ids[m] == question_bank[z].id) used=1;
+                         if(!used) { qid = question_bank[z].id; break; }
+                     }
+                }
+
+                game_sessions[i].used_question_ids[j] = qid;
+                // Debug log
+                // printf("[Game] Session %d Q%d: ID=%d (Lv %d)\n", i, j+1, qid, level);
             }
             
             LeaveCriticalSection(&cs_games);
@@ -136,56 +136,157 @@ int create_game_session(const char* p1, const char* p2, int num_questions) {
     return -1;
 }
 
-cJSON* get_random_question(int *used_ids, int used_count) {
-    char *file_content = read_file(QUESTION_FILE);
-    if (!file_content) return NULL;
-    
-    cJSON *json = cJSON_Parse(file_content);
-    if (!json || !cJSON_IsArray(json)) {
-        free(file_content);
-        return NULL;
-    }
-    
-    int total = cJSON_GetArraySize(json);
-    if (total == 0) {
-        cJSON_Delete(json);
-        free(file_content);
-        return NULL;
-    }
-    
-    int attempts = 0;
-    while (attempts < 100) {
-        int random_idx = rand() % total;
-        cJSON *q = cJSON_GetArrayItem(json, random_idx);
-        int qid = cJSON_GetObjectItem(q, "id")->valueint;
-        
-        int already_used = 0;
-        for (int i = 0; i < used_count; i++) {
-            if (used_ids[i] == qid) {
-                already_used = 1;
-                break;
-            }
-        }
-        
-        if (!already_used) {
-            cJSON *result = cJSON_Duplicate(q, 1);
-            cJSON_Delete(json);
-            free(file_content);
-            return result;
-        }
-        attempts++;
-    }
-    
-    cJSON_Delete(json);
-    free(file_content);
-    return NULL;
-}
-
 int calculate_score(int is_correct, double time_taken) {
     if (!is_correct) return 0;
+    // Trả lời càng nhanh càng nhiều điểm (Tối đa BASE_SCORE, tối thiểu 10%)
     double time_factor = 1.0 - (time_taken / MAX_TIME_PER_QUESTION);
     if (time_factor < 0.1) time_factor = 0.1;
     return (int)(BASE_SCORE * time_factor);
+}
+
+// === XỬ LÝ QUYỀN TRỢ GIÚP (LIFELINES) ===
+cJSON* process_lifeline(int game_id, const char* username, int lifeline_id) {
+    cJSON *res_data = cJSON_CreateObject();
+    
+    if (game_id < 0 || !game_sessions[game_id].is_active) {
+        cJSON_AddStringToObject(res_data, "status", "ERROR");
+        return res_data;
+    }
+
+    GameSession *gs = &game_sessions[game_id];
+    int is_p1 = (strcmp(gs->player1, username) == 0);
+    int *lifelines = is_p1 ? gs->p1_lifelines : gs->p2_lifelines;
+
+    // 1. Kiểm tra đã dùng chưa
+    if (lifelines[lifeline_id] == 1) {
+        cJSON_AddStringToObject(res_data, "status", "ALREADY_USED");
+        return res_data;
+    }
+
+    // 2. Lấy câu hỏi hiện tại của người chơi
+    int c_idx = find_client_index(username);
+    if (c_idx == -1) return NULL;
+    
+    int q_idx = clients[c_idx].current_question_index;
+    // Kiểm tra index hợp lệ
+    if (q_idx >= gs->total_questions) return NULL;
+    
+    int q_id = gs->used_question_ids[q_idx];
+    
+    // Tìm câu hỏi trong RAM
+    Question *q = NULL;
+    for(int i=0; i<question_count; i++) {
+        if (question_bank[i].id == q_id) { q = &question_bank[i]; break; }
+    }
+    
+    if (!q) {
+        cJSON_AddStringToObject(res_data, "status", "ERROR_DATA");
+        return res_data;
+    }
+
+    // 3. Đánh dấu đã dùng
+    lifelines[lifeline_id] = 1;
+    cJSON_AddStringToObject(res_data, "status", "OK");
+    cJSON_AddNumberToObject(res_data, "lifeline_id", lifeline_id);
+
+    // 4. Logic từng quyền
+    if (lifeline_id == LIFELINE_5050) {
+        // Loại bỏ 2 phương án sai
+        int correct = q->answer_index;
+        int remove1, remove2;
+        
+        // Random remove1 khác correct
+        do { remove1 = rand() % 4; } while (remove1 == correct);
+        // Random remove2 khác correct và remove1
+        do { remove2 = rand() % 4; } while (remove2 == correct || remove2 == remove1);
+        
+        cJSON *removed = cJSON_CreateArray();
+        cJSON_AddItemToArray(removed, cJSON_CreateNumber(remove1));
+        cJSON_AddItemToArray(removed, cJSON_CreateNumber(remove2));
+        cJSON_AddItemToObject(res_data, "removed_indexes", removed);
+    }
+    else if (lifeline_id == LIFELINE_AUDIENCE) {
+        // Giả lập khán giả: Tỷ lệ đúng giảm dần theo độ khó
+        int correct = q->answer_index;
+        int stats[4] = {0};
+        int remain = 100;
+        
+        // Độ khó càng cao, khán giả càng dễ sai
+        int confidence = (q->difficulty == 1) ? 80 : (q->difficulty == 2) ? 55 : 35;
+        // Random dao động +/- 10%
+        int actual_correct_percent = confidence + (rand() % 20 - 10);
+        if (actual_correct_percent > 95) actual_correct_percent = 95;
+        if (actual_correct_percent < 20) actual_correct_percent = 20;
+
+        stats[correct] = actual_correct_percent;
+        remain -= stats[correct];
+        
+        // Chia phần còn lại cho 3 đáp án kia
+        for (int i=0; i<4; i++) {
+            if (i == correct) continue;
+            if (remain <= 0) { stats[i] = 0; continue; }
+            
+            int val = rand() % (remain + 1);
+            // Nếu là phần tử sai cuối cùng thì gán nốt phần còn lại
+            int is_last_wrong = 1;
+            for(int k=i+1; k<4; k++) if(k!=correct) is_last_wrong=0;
+            
+            if(is_last_wrong) val = remain;
+            
+            stats[i] = val;
+            remain -= val;
+        }
+        
+        cJSON *arr = cJSON_CreateIntArray(stats, 4);
+        cJSON_AddItemToObject(res_data, "percentages", arr);
+    }
+    else if (lifeline_id == LIFELINE_CALL) {
+        // Gọi điện thoại: Chuyên gia rởm
+        int suggest = q->answer_index;
+        // Nếu câu khó, có 30% khả năng chuyên gia chỉ sai
+        if (q->difficulty == 3 && (rand() % 100 < 30)) {
+             do { suggest = rand() % 4; } while (suggest == q->answer_index);
+        }
+        
+        char *names[] = {"Bo me", "Giao su Xoay", "Google", "Ban than"};
+        cJSON_AddNumberToObject(res_data, "suggested_index", suggest);
+        cJSON_AddStringToObject(res_data, "friend_name", names[rand() % 4]);
+    }
+    else if (lifeline_id == LIFELINE_SWAP) {
+        // Đổi câu hỏi khác cùng độ khó
+        int new_id = get_random_question_id_by_level(q->difficulty, gs->used_question_ids, gs->total_questions);
+        // Nếu không tìm được thì lấy đại
+        if (new_id == -1) new_id = get_random_question_id_by_level(1, gs->used_question_ids, gs->total_questions);
+        
+        if (new_id != -1) {
+            // Cập nhật vào Session để server biết câu hỏi hiện tại của user đã đổi
+            gs->used_question_ids[q_idx] = new_id;
+            
+            // Lấy data câu hỏi mới trả về
+            Question *new_q = NULL;
+            for(int i=0; i<question_count; i++) {
+                if (question_bank[i].id == new_id) { new_q = &question_bank[i]; break; }
+            }
+            
+            if (new_q) {
+                cJSON_AddStringToObject(res_data, "new_question", new_q->question);
+                cJSON *opts = cJSON_CreateArray();
+                for(int i=0; i<4; i++) cJSON_AddItemToArray(opts, cJSON_CreateString(new_q->options[i]));
+                cJSON_AddItemToObject(res_data, "new_options", opts);
+                cJSON_AddNumberToObject(res_data, "new_id", new_q->id);
+            }
+        }
+    }
+
+    return res_data;
+}
+
+// --- BROADCAST & LEADERBOARD (Dùng cho connection_handler) ---
+
+void broadcast_lobby_update() {
+    // Logic đã được tích hợp trong connection_handler thông qua POLL
+    // Hàm này giữ lại nếu muốn chủ động gửi (server push)
+    // Hiện tại code client dùng POLL nên hàm này có thể để trống hoặc dùng để debug log
 }
 
 cJSON* get_leaderboard_json() {
@@ -193,28 +294,41 @@ cJSON* get_leaderboard_json() {
     if (!file_content) return cJSON_CreateArray();
 
     cJSON *json = cJSON_Parse(file_content);
-    if (!json || !cJSON_IsArray(json)) { free(file_content); return cJSON_CreateArray(); }
+    if (!json || !cJSON_IsArray(json)) { 
+        if(file_content) free(file_content); 
+        return cJSON_CreateArray(); 
+    }
 
     int count = cJSON_GetArraySize(json);
+    // Giới hạn bộ nhớ alloc
+    if (count > 100) count = 100; 
+    
     PlayerScore *list = (PlayerScore*)malloc(sizeof(PlayerScore) * count);
     int idx = 0;
     cJSON *acc = NULL;
     cJSON_ArrayForEach(acc, json) {
-        strcpy(list[idx].username, cJSON_GetObjectItem(acc, "username")->valuestring);
-        list[idx].score = cJSON_GetObjectItem(acc, "score")->valueint;
-        idx++;
+        if (idx >= count) break;
+        cJSON *u = cJSON_GetObjectItem(acc, "username");
+        cJSON *s = cJSON_GetObjectItem(acc, "score");
+        if (u && s) {
+            strncpy(list[idx].username, u->valuestring, 49);
+            list[idx].score = s->valueint;
+            idx++;
+        }
     }
+    int valid_count = idx;
 
-    qsort(list, count, sizeof(PlayerScore), compare_scores);
+    qsort(list, valid_count, sizeof(PlayerScore), compare_scores);
 
     cJSON *res_arr = cJSON_CreateArray();
-    int limit = (count < 20) ? count : 20;
+    int limit = (valid_count < 20) ? valid_count : 20;
     for (int i = 0; i < limit; i++) {
         cJSON *item = cJSON_CreateObject();
         cJSON_AddStringToObject(item, "name", list[i].username);
         cJSON_AddNumberToObject(item, "score", list[i].score);
         cJSON_AddItemToArray(res_arr, item);
     }
+    
     free(list);
     cJSON_Delete(json);
     free(file_content);

@@ -19,6 +19,19 @@
 #define MSG_TYPE_POLL           "POLL"
 #define MSG_TYPE_NO_EVENT       "NO_EVENT"
 
+// Classic Mode Flow
+#define MSG_TYPE_START_CLASSIC  "START_CLASSIC" // Yêu cầu bắt đầu chơi đơn
+
+// Lifelines
+#define MSG_TYPE_USE_LIFELINE   "USE_LIFELINE"  // Client yêu cầu dùng quyền trợ giúp
+#define MSG_TYPE_LIFELINE_RES   "LIFELINE_RES"  // Server trả về kết quả trợ giúp
+
+// Lifeline ID
+#define LIFELINE_5050           1
+#define LIFELINE_AUDIENCE       2
+#define LIFELINE_CALL           3
+#define LIFELINE_SWAP           4
+
 // PvP Flow
 #define MSG_TYPE_INVITE_PLAYER  "INVITE_PLAYER"  // A gửi yêu cầu mời B
 #define MSG_TYPE_RECEIVE_INVITE "RECEIVE_INVITE" // B nhận được tin mời

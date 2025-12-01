@@ -47,6 +47,7 @@ class LobbyView(tk.Frame):
         action_frame = tk.Frame(self, bg=BG_PRIMARY)
         action_frame.pack(pady=20)
         create_styled_button(action_frame, "Thách đấu", self.on_invite, ACCENT_COLOR).pack(side=tk.LEFT, padx=10)
+        create_styled_button(action_frame, "Chơi Đơn", self.on_play_classic, SUCCESS_COLOR).pack(side=tk.LEFT, padx=10)
         create_styled_button(action_frame, "Lịch sử", lambda: self.controller.show_frame("HistoryView"), WARNING_COLOR, TEXT_DARK).pack(side=tk.LEFT, padx=10)
         create_styled_button(action_frame, "Đăng xuất", self.on_logout, DANGER_COLOR).pack(side=tk.LEFT, padx=10)
 
@@ -102,6 +103,13 @@ class LobbyView(tk.Frame):
             messagebox.showinfo("Đã gửi", "Đang chờ đối thủ...")
         else:
             messagebox.showerror("Lỗi", res.get("message"))
+    
+    def on_play_classic(self):
+        res = self.controller.network.send_request({"type": "START_CLASSIC"})
+        if res.get("type") == "GAME_START":
+            print("[Lobby] Request Classic Mode sent. Waiting for server...")
+        else:
+            messagebox.showerror("Lỗi", "Không thể bắt đầu game!")
 
     def on_logout(self):
         self.controller.network.send_request({"type": "LOGOUT"})
