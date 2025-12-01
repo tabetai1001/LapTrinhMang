@@ -9,7 +9,16 @@
 // Helper: Đọc toàn bộ file vào chuỗi
 char* read_file(const char* filename) {
     FILE *f = fopen(filename, "rb");
+    
+    // Nếu không tìm thấy, thử thêm "../" vào đầu (trường hợp chạy từ thư mục bin)
+    if (!f) {
+        char alt_path[512];
+        snprintf(alt_path, sizeof(alt_path), "../%s", filename);
+        f = fopen(alt_path, "rb");
+    }
+    
     if (!f) return NULL;
+    
     fseek(f, 0, SEEK_END);
     long length = ftell(f);
     fseek(f, 0, SEEK_SET);

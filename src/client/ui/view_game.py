@@ -293,6 +293,42 @@ class GameView(tk.Frame):
             for i, opt in enumerate(new_opts):
                 self.btn_opts[i].config(text=f"{chr(65+i)}. {opt}", state=tk.NORMAL, bg="white")
 
+    def show_opponent_quit(self, opponent_name):
+        """Hiển thị thông báo khi đối thủ đầu hàng"""
+        self.stop_timer()
+        self.controller.is_in_game = False
+        
+        # Tạo cửa sổ popup tùy chỉnh
+        popup = tk.Toplevel(self)
+        popup.title("Chiến thắng!")
+        popup.geometry("400x250")
+        popup.configure(bg=BG_PRIMARY)
+        popup.resizable(False, False)
+        
+        # Căn giữa màn hình
+        popup.transient(self)
+        popup.grab_set()
+        
+        # Nội dung
+        tk.Label(popup, text="🏆 CHIẾN THẮNG! 🏆", 
+                font=("Segoe UI", 20, "bold"), fg=SUCCESS_COLOR, bg=BG_PRIMARY).pack(pady=20)
+        
+        tk.Label(popup, text=f"{opponent_name} đã đầu hàng!\n\nBạn đã thắng trận đấu này.", 
+                font=("Segoe UI", 14), fg=TEXT_LIGHT, bg=BG_PRIMARY, justify=tk.CENTER).pack(pady=10)
+        
+        tk.Label(popup, text=f"Điểm của bạn: {self.my_score}", 
+                font=("Segoe UI", 12, "bold"), fg="white", bg=BG_PRIMARY).pack(pady=5)
+        
+        # Nút quay về sảnh
+        def return_to_lobby():
+            popup.destroy()
+            self.quit_game()
+        
+        create_styled_button(popup, "Quay về sảnh chờ", return_to_lobby, SUCCESS_COLOR, width=20).pack(pady=20)
+        
+        # Đợi người dùng đóng popup
+        popup.wait_window()
+    
     def show_game_over_pvp(self, you_win):
         self.stop_timer()
         self.controller.is_in_game = False

@@ -42,27 +42,27 @@ all: directories server client_dll
 
 # 2. Tao thu muc bin neu chua co
 directories:
-	@if not exist $(BIN_DIR) mkdir $(BIN_DIR)
+	@mkdir -p $(BIN_DIR)
 
 # 3. Build Server (.exe)
 server: $(SERVER_SOURCES)
-	@echo [BUILD] Building Server (Modular)...
+	@echo "[BUILD] Building Server (Modular)..."
 	$(CC) $(CFLAGS) -o $(BIN_DIR)/server.exe $(SERVER_SOURCES) $(LDFLAGS)
-	@echo [SUCCESS] Server built at $(BIN_DIR)/server.exe
+	@echo "[SUCCESS] Server built at $(BIN_DIR)/server.exe"
 
 # 4. Build Client Network DLL (.dll)
 client_dll: $(CLIENT_SOURCES)
-	@echo [BUILD] Building Client DLL...
+	@echo "[BUILD] Building Client DLL..."
 	$(CC) $(CFLAGS) -shared -o $(BIN_DIR)/client_network.dll $(CLIENT_SOURCES) $(LDFLAGS)
-	@echo [SUCCESS] Client DLL built at $(BIN_DIR)/client_network.dll
+	@echo "[SUCCESS] Client DLL built at $(BIN_DIR)/client_network.dll"
 
 # 5. Don dep (Xoa file da build)
 clean:
-	@if exist $(BIN_DIR)\server.exe del $(BIN_DIR)\server.exe
-	@if exist $(BIN_DIR)\client_network.dll del $(BIN_DIR)\client_network.dll
-	@echo [CLEAN] Cleanup complete.
+	@rm -f $(BIN_DIR)/server.exe
+	@rm -f $(BIN_DIR)/client_network.dll
+	@echo "[CLEAN] Cleanup complete."
 
 # 6. Chay thu Server
 run: server
-	@echo [RUN] Starting Server...
-	.\$(BIN_DIR)\server.exe
+	@echo "[RUN] Starting Server..."
+	./$(BIN_DIR)/server.exe

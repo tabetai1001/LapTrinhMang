@@ -11,7 +11,8 @@ class ClientApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Ai Là Triệu Phú - Online")
-        self.geometry("800x600")
+        self.geometry("1000x700")
+        self.minsize(900, 650)
         self.configure(bg=BG_PRIMARY)
         
         # --- Core ---
@@ -23,6 +24,8 @@ class ClientApp(tk.Tk):
         # --- UI Manager ---
         self.container = tk.Frame(self, bg=BG_PRIMARY)
         self.container.pack(side="top", fill="both", expand=True)
+        self.container.grid_rowconfigure(0, weight=1)
+        self.container.grid_columnconfigure(0, weight=1)
         
         self.frames = {}
         self.init_views()
@@ -78,8 +81,21 @@ class ClientApp(tk.Tk):
                 
             # 3. Cập nhật danh sách Lobby
             elif msg_type == "LOBBY_LIST":
-                if hasattr(self.frames["LobbyView"], "update_list"):
-                    self.frames["LobbyView"].update_list(res.get("players", []))
+                if hasattr(self.frames["LobbyView"], "refresh_lobby"):
+                    self.frames["LobbyView"].refresh_lobby()
+            
+            # 4. Đối thủ thoát game (đầu hàng)
+            elif msg_type == "OPPONENT_QUIT":
+                if self.is_in_game:
+                    opponent_name = res.get("opponent", "Đối thủ")
+                    self.frames["GameView"].show_opponent_quit(opponent_name)
+            
+            # 5. Tin nhắn chat mới
+            elif msg_type == "NEW_CHAT_MESSAGE":
+                username = res.get("username")
+                message = res.get("message")
+                if hasattr(self.frames["LobbyView"], "add_chat_message"):
+                    self.frames["LobbyView"].add_chat_message(username, message)
                     
         except Exception as e:
             print(f"Polling error: {e}")

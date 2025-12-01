@@ -27,6 +27,8 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
             clients[i].game_session_id = -1;
             clients[i].current_question_index = 0;
             clients[i].last_lobby_version = -1;
+            clients[i].opponent_quit = 0;
+            clients[i].last_chat_version = 0;
             client_index = i;
             break;
         }
@@ -74,6 +76,7 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                 clients[client_index].is_logged_in = 1;
                 clients[client_index].score = score;
                 clients[client_index].is_busy = 0;
+                clients[client_index].opponent_quit = 0;
                 LeaveCriticalSection(&cs_clients);
 
                 cJSON_AddStringToObject(res, "type", MSG_TYPE_LOGIN_SUCCESS);
@@ -95,8 +98,14 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
             EnterCriticalSection(&cs_clients);
             EnterCriticalSection(&cs_games);
             
+            // Ưu tiên 0: Kiểm tra đối thủ đã thoát chưa
+            if (clients[client_index].opponent_quit == 1) {
+                cJSON_AddStringToObject(res, "type", "OPPONENT_QUIT");
+                cJSON_AddStringToObject(res, "opponent", clients[client_index].current_opponent);
+                clients[client_index].opponent_quit = 0; // Reset flag sau khi gửi
+            }
             // Ưu tiên 1: Kiểm tra lời mời thách đấu
-            if (strlen(clients[client_index].pending_invite_from) > 0) {
+            else if (strlen(clients[client_index].pending_invite_from) > 0) {
                 char invite_copy[100];
                 strcpy(invite_copy, clients[client_index].pending_invite_from);
                 char *colon = strchr(invite_copy, ':');
@@ -128,23 +137,41 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                      }
                  }
             }
-            // Ưu tiên 3: Kiểm tra danh sách Lobby có thay đổi không
+            // Ưu tiên 3: Kiểm tra tin nhắn chat mới
             else {
-                EnterCriticalSection(&cs_lobby);
-                int current_lobby = lobby_version;
-                int client_lobby = clients[client_index].last_lobby_version;
-                LeaveCriticalSection(&cs_lobby);
+                EnterCriticalSection(&cs_chat);
+                int current_chat = chat_version;
+                int client_chat = clients[client_index].last_chat_version;
+                LeaveCriticalSection(&cs_chat);
                 
-                if (client_lobby != current_lobby) {
-                    // Báo cho client biết cần refresh danh sách
-                    cJSON_AddStringToObject(res, "type", MSG_TYPE_LOBBY_LIST);
-                    
-                    // Update version
+                if (client_chat != current_chat && chat_count > 0) {
+                    // Có tin nhắn mới - gửi tin nhắn cuối cùng
+                    EnterCriticalSection(&cs_chat);
+                    int last_idx = (chat_count - 1) % MAX_CHAT_MESSAGES;
+                    cJSON_AddStringToObject(res, "type", MSG_TYPE_NEW_CHAT_MESSAGE);
+                    cJSON_AddStringToObject(res, "username", chat_messages[last_idx].username);
+                    cJSON_AddStringToObject(res, "message", chat_messages[last_idx].message);
+                    clients[client_index].last_chat_version = current_chat;
+                    LeaveCriticalSection(&cs_chat);
+                }
+                // Ưu tiên 4: Kiểm tra danh sách Lobby có thay đổi không
+                else {
                     EnterCriticalSection(&cs_lobby);
-                    clients[client_index].last_lobby_version = current_lobby;
+                    int current_lobby = lobby_version;
+                    int client_lobby = clients[client_index].last_lobby_version;
                     LeaveCriticalSection(&cs_lobby);
-                } else {
-                    cJSON_AddStringToObject(res, "type", MSG_TYPE_NO_EVENT);
+                    
+                    if (client_lobby != current_lobby) {
+                        // Báo cho client biết cần refresh danh sách
+                        cJSON_AddStringToObject(res, "type", MSG_TYPE_LOBBY_LIST);
+                        
+                        // Update version
+                        EnterCriticalSection(&cs_lobby);
+                        clients[client_index].last_lobby_version = current_lobby;
+                        LeaveCriticalSection(&cs_lobby);
+                    } else {
+                        cJSON_AddStringToObject(res, "type", MSG_TYPE_NO_EVENT);
+                    }
                 }
             }
             LeaveCriticalSection(&cs_games);
@@ -489,12 +516,16 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                 game_sessions[gid].is_active = 0; // Hủy game
                 int opp_idx = find_client_index(clients[client_index].current_opponent);
                 if(opp_idx!=-1) {
-                    clients[opp_idx].is_busy = 0; 
-                    clients[opp_idx].game_session_id = -1;
+                    // Đánh dấu đối thủ biết rằng người này đã thoát
+                    clients[opp_idx].opponent_quit = 1;
+                    // KHÔNG tự động chuyển trạng thái đối thủ về FREE
+                    // Đợi đối thủ tự QUIT_GAME hoặc quay lại lobby
                 }
             }
             clients[client_index].is_busy = 0;
             clients[client_index].game_session_id = -1;
+            clients[client_index].opponent_quit = 0;
+            strcpy(clients[client_index].current_opponent, "");
             
             EnterCriticalSection(&cs_lobby); lobby_version++; LeaveCriticalSection(&cs_lobby);
             cJSON_AddStringToObject(res, "type", "QUIT_GAME_SUCCESS");
@@ -547,6 +578,46 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
         else if (strcmp(type->valuestring, MSG_TYPE_GET_LEADERBOARD) == 0) {
             cJSON_AddStringToObject(res, "type", MSG_TYPE_LEADERBOARD_DATA);
             cJSON_AddItemToObject(res, "players", get_leaderboard_json());
+        }
+        // --- CHAT MESSAGES ---
+        else if (strcmp(type->valuestring, MSG_TYPE_SEND_CHAT) == 0) {
+            cJSON *msg = cJSON_GetObjectItem(req, "message");
+            if (msg && msg->valuestring) {
+                EnterCriticalSection(&cs_chat);
+                
+                // Thêm tin nhắn vào mảng (circular buffer)
+                int idx = chat_count % MAX_CHAT_MESSAGES;
+                strncpy(chat_messages[idx].username, clients[client_index].username, 49);
+                strncpy(chat_messages[idx].message, msg->valuestring, 255);
+                chat_messages[idx].timestamp = time(NULL);
+                
+                if (chat_count < MAX_CHAT_MESSAGES) chat_count++;
+                chat_version++; // Tăng version để notify clients
+                
+                LeaveCriticalSection(&cs_chat);
+                
+                cJSON_AddStringToObject(res, "type", MSG_TYPE_CHAT_SUCCESS);
+            }
+        }
+        else if (strcmp(type->valuestring, MSG_TYPE_GET_CHAT_HISTORY) == 0) {
+            cJSON_AddStringToObject(res, "type", MSG_TYPE_CHAT_HISTORY);
+            cJSON *msg_arr = cJSON_CreateArray();
+            
+            EnterCriticalSection(&cs_chat);
+            int start = (chat_count >= MAX_CHAT_MESSAGES) ? (chat_count % MAX_CHAT_MESSAGES) : 0;
+            int count = (chat_count < MAX_CHAT_MESSAGES) ? chat_count : MAX_CHAT_MESSAGES;
+            
+            for (int i = 0; i < count; i++) {
+                int idx = (start + i) % MAX_CHAT_MESSAGES;
+                cJSON *msg_obj = cJSON_CreateObject();
+                cJSON_AddStringToObject(msg_obj, "username", chat_messages[idx].username);
+                cJSON_AddStringToObject(msg_obj, "message", chat_messages[idx].message);
+                cJSON_AddNumberToObject(msg_obj, "timestamp", (double)chat_messages[idx].timestamp);
+                cJSON_AddItemToArray(msg_arr, msg_obj);
+            }
+            LeaveCriticalSection(&cs_chat);
+            
+            cJSON_AddItemToObject(res, "messages", msg_arr);
         }
 
         char *res_str = cJSON_PrintUnformatted(res);

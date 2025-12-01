@@ -55,6 +55,13 @@
 #define MSG_TYPE_GET_HISTORY    "GET_HISTORY"    // Client lấy lịch sử đấu
 #define MSG_TYPE_HISTORY_DATA   "HISTORY_DATA"   // Server trả về lịch sử
 
+// Chat
+#define MSG_TYPE_SEND_CHAT      "SEND_CHAT"         // Client gửi tin nhắn
+#define MSG_TYPE_CHAT_SUCCESS   "CHAT_SUCCESS"      // Server xác nhận
+#define MSG_TYPE_GET_CHAT_HISTORY "GET_CHAT_HISTORY" // Client lấy lịch sử chat
+#define MSG_TYPE_CHAT_HISTORY   "CHAT_HISTORY"      // Server trả lịch sử
+#define MSG_TYPE_NEW_CHAT_MESSAGE "NEW_CHAT_MESSAGE" // Server broadcast tin mới
+
 // Buffer size
 #define BUFFER_SIZE 4096
 

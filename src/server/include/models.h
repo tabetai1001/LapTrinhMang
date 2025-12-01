@@ -36,6 +36,8 @@ typedef struct {
     int game_session_id;
     int current_question_index;
     int last_lobby_version;
+    int opponent_quit; // Flag để đánh dấu đối thủ đã thoát
+    int last_chat_version; // Version cuối cùng client đã nhận
 } ClientState;
 
 typedef struct {
