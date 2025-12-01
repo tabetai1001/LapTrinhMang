@@ -77,6 +77,12 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                 clients[client_index].score = score;
                 clients[client_index].is_busy = 0;
                 clients[client_index].opponent_quit = 0;
+                
+                // Sync chat version để tránh duplicate tin nhắn khi đăng nhập
+                EnterCriticalSection(&cs_chat);
+                clients[client_index].last_chat_version = chat_version;
+                LeaveCriticalSection(&cs_chat);
+                
                 LeaveCriticalSection(&cs_clients);
 
                 cJSON_AddStringToObject(res, "type", MSG_TYPE_LOGIN_SUCCESS);
@@ -513,15 +519,52 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
             EnterCriticalSection(&cs_games);
             int gid = clients[client_index].game_session_id;
             if(gid >= 0 && game_sessions[gid].is_active) {
+                // Kiểm tra nếu là PvP (có player2) thì lưu lịch sử
+                int is_pvp = (strlen(game_sessions[gid].player2) > 0);
+                
                 game_sessions[gid].is_active = 0; // Hủy game
                 int opp_idx = find_client_index(clients[client_index].current_opponent);
-                if(opp_idx!=-1) {
-                    // Đánh dấu đối thủ biết rằng người này đã thoát
-                    clients[opp_idx].opponent_quit = 1;
-                    // KHÔNG tự động chuyển trạng thái đối thủ về FREE
-                    // Đợi đối thủ tự QUIT_GAME hoặc quay lại lobby
+                
+                if(opp_idx != -1) {
+                    // Nếu đối thủ chưa nhận thông báo opponent_quit
+                    // => Người này đang thoát trước (đầu hàng)
+                    // => Set flag để đối thủ nhận thông báo, nhưng GIỮ trạng thái IN_GAME
+                    if (clients[opp_idx].opponent_quit == 0) {
+                        clients[opp_idx].opponent_quit = 1;
+                        
+                        // Lưu lịch sử trận đấu PvP với người thoát = thua
+                        if (is_pvp) {
+                            EnterCriticalSection(&cs_history);
+                            if(history_count < MAX_HISTORY) {
+                                game_history[history_count].game_key = game_sessions[gid].game_key;
+                                strcpy(game_history[history_count].player1, game_sessions[gid].player1);
+                                strcpy(game_history[history_count].player2, game_sessions[gid].player2);
+                                game_history[history_count].score1 = game_sessions[gid].score1;
+                                game_history[history_count].score2 = game_sessions[gid].score2;
+                                game_history[history_count].total_questions = game_sessions[gid].total_questions;
+                                game_history[history_count].finished_time = time(NULL);
+                                history_count++;
+                            }
+                            LeaveCriticalSection(&cs_history);
+                            save_history_to_file();
+                            
+                            // Cộng điểm tích lũy cho cả 2 người
+                            update_user_score(game_sessions[gid].player1, game_sessions[gid].score1);
+                            update_user_score(game_sessions[gid].player2, game_sessions[gid].score2);
+                        }
+                        
+                        // GIỮ is_busy = 1 để đối thủ vẫn IN_GAME
+                        // Đối thủ sẽ tự quit khi click "Quay về sảnh"
+                    } else {
+                        // Nếu opponent_quit = 1 => Đối thủ đã thoát trước, người này đang quit sau
+                        // => Clear trạng thái bình thường (không lưu history vì đã lưu rồi)
+                        clients[opp_idx].is_busy = 0;
+                        clients[opp_idx].game_session_id = -1;
+                        strcpy(clients[opp_idx].current_opponent, "");
+                    }
                 }
             }
+            // Clear trạng thái của người đang quit
             clients[client_index].is_busy = 0;
             clients[client_index].game_session_id = -1;
             clients[client_index].opponent_quit = 0;

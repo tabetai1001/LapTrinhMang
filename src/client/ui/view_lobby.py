@@ -209,6 +209,11 @@ class LobbyView(tk.Frame):
     
     def load_chat_history(self):
         """Tải lịch sử chat từ server"""
+        # Clear chat text trước khi load để tránh duplicate
+        self.chat_text.config(state=tk.NORMAL)
+        self.chat_text.delete(1.0, tk.END)
+        self.chat_text.config(state=tk.DISABLED)
+        
         res = self.controller.network.send_request({"type": "GET_CHAT_HISTORY"})
         
         if res.get("type") == "CHAT_HISTORY":

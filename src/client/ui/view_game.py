@@ -305,15 +305,21 @@ class GameView(tk.Frame):
         popup.configure(bg=BG_PRIMARY)
         popup.resizable(False, False)
         
-        # Căn giữa màn hình
-        popup.transient(self)
+        # Căn giữa cửa sổ game (không phải màn hình)
+        popup.transient(self.controller)
         popup.grab_set()
+        
+        # Tính toán vị trí để hiển thị ở giữa cửa sổ game
+        self.controller.update_idletasks()
+        x = self.controller.winfo_x() + (self.controller.winfo_width() // 2) - 200
+        y = self.controller.winfo_y() + (self.controller.winfo_height() // 2) - 125
+        popup.geometry(f"+{x}+{y}")
         
         # Nội dung
         tk.Label(popup, text="🏆 CHIẾN THẮNG! 🏆", 
                 font=("Segoe UI", 20, "bold"), fg=SUCCESS_COLOR, bg=BG_PRIMARY).pack(pady=20)
         
-        tk.Label(popup, text=f"{opponent_name} đã đầu hàng!\n\nBạn đã thắng trận đấu này.", 
+        tk.Label(popup, text="Đối thủ đã đầu hàng!\n\nBạn đã thắng trận đấu này.", 
                 font=("Segoe UI", 14), fg=TEXT_LIGHT, bg=BG_PRIMARY, justify=tk.CENTER).pack(pady=10)
         
         tk.Label(popup, text=f"Điểm của bạn: {self.my_score}", 
