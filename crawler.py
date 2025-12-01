@@ -4,13 +4,15 @@ import html
 import random
 import os
 import math
+import time
 
 # --- CẤU HÌNH ---
-TOTAL_AMOUNT = 200      # Tổng số câu hỏi muốn lấy
+TOTAL_AMOUNT = 2000    # Tổng số câu hỏi muốn lấy
 OUTPUT_DIR = "data"    # Thư mục lưu file
 OUTPUT_FILE = "questions.json"
+BATCH_SIZE = 50        # Số câu lấy mỗi lần gọi API (Max của OpenTDB là 50)
 
-# Danh sách ID các chủ đề bạn muốn lấy (theo OpenTDB)
+# Danh sách ID các chủ đề (Science, Geography, History, Animals, Politics...)
 TARGET_CATEGORIES = [
     17, # Science & Nature
     18, # Science: Computers
@@ -33,36 +35,76 @@ def fetch_and_process():
     
     raw_results = []
     
-    # Tính số câu cần lấy cho mỗi chủ đề (làm tròn lên)
+    # Tính số câu cần lấy cho mỗi chủ đề (chia đều)
     amount_per_cat = math.ceil(TOTAL_AMOUNT / len(TARGET_CATEGORIES))
+    print(f"Muc tieu: ~{amount_per_cat} cau hoi / moi chu de")
 
-    # 1. Lấy dữ liệu từ từng chủ đề
+    # 1. Vòng lặp qua từng chủ đề
     for cat_id in TARGET_CATEGORIES:
-        url = f"https://opentdb.com/api.php?amount={amount_per_cat}&category={cat_id}&type=multiple"
-        print(f"Dang tai category ID {cat_id}...", end=" ")
+        print(f"\n>> Dang xu ly Category ID {cat_id}...")
         
-        try:
-            response = requests.get(url)
-            if response.status_code == 200:
-                data = response.json()
-                if data["response_code"] == 0:
-                    raw_results.extend(data["results"])
-                    print(f"OK ({len(data['results'])} cau)")
-                else:
-                    print("Het cau hoi/Loi API")
-            else:
-                print("Loi mang")
-        except Exception as e:
-            print(f"Loi: {e}")
+        collected_for_cat = 0
+        empty_response_count = 0
+        
+        # Vòng lặp để lấy đủ số lượng cho chủ đề này (Phân trang)
+        while collected_for_cat < amount_per_cat:
+            # Tính số lượng cần lấy trong lần này (tối đa 50)
+            remaining = amount_per_cat - collected_for_cat
+            current_batch_size = min(BATCH_SIZE, remaining)
+            
+            url = f"https://opentdb.com/api.php?amount={current_batch_size}&category={cat_id}&type=multiple"
+            
+            try:
+                response = requests.get(url)
+                
+                # Xử lý giới hạn tốc độ (Rate Limit)
+                if response.status_code == 429:
+                    print("   ! Qua nhanh (Rate Limit). Dang cho 5 giay...")
+                    time.sleep(5)
+                    continue # Thử lại
+                
+                if response.status_code != 200:
+                    print(f"   ! Loi HTTP {response.status_code}. Bo qua lan nay.")
+                    break
 
-    # Cắt bớt nếu lấy dư (do làm tròn lên)
+                data = response.json()
+                response_code = data["response_code"]
+
+                # Code 0: Thành công
+                if response_code == 0:
+                    batch_results = data["results"]
+                    if len(batch_results) > 0:
+                        raw_results.extend(batch_results)
+                        collected_for_cat += len(batch_results)
+                        print(f"   + Da lay {len(batch_results)} cau (Tong chu de nay: {collected_for_cat}/{amount_per_cat})")
+                    else:
+                        print("   ! API tra ve rong.")
+                        break # Dừng chủ đề này
+                
+                # Code 1: No Results (Hết câu hỏi trong DB của họ cho chủ đề này)
+                elif response_code == 1:
+                    print(f"   ! Da het cau hoi cho chu de {cat_id}. Chuyen chu de khac.")
+                    break 
+                
+                # Các lỗi khác
+                else:
+                    print(f"   ! Loi API Code: {response_code}. Thu lai...")
+                    time.sleep(1)
+
+            except Exception as e:
+                print(f"   ! Loi Exception: {e}")
+                break
+            
+            # Nghỉ 2 giây giữa các lần gọi để tránh bị ban IP
+            time.sleep(2)
+
+    # Cắt bớt nếu lấy dư
     if len(raw_results) > TOTAL_AMOUNT:
         raw_results = raw_results[:TOTAL_AMOUNT]
 
-    print(f"\nTong thu duoc: {len(raw_results)} cau hoi tho. Dang xu ly va sap xep...")
+    print(f"\n=== TONG KET: Thu duoc {len(raw_results)} cau hoi tho. Dang xu ly... ===")
 
     # 2. Sắp xếp theo độ khó: Easy -> Medium -> Hard
-    # Sử dụng lambda để map từ string sang số (1, 2, 3) để sort
     raw_results.sort(key=lambda x: DIFFICULTY_ORDER.get(x["difficulty"], 4))
 
     # 3. Format lại dữ liệu chuẩn JSON dự án
@@ -82,12 +124,12 @@ def fetch_and_process():
         answer_index = options.index(correct_answer)
         
         q_obj = {
-            "id": index + 1, # ID tăng dần từ 1 sau khi đã sắp xếp
+            "id": index + 1, # ID tăng dần từ 1
             "question": question_text,
             "options": options,
             "answer_index": answer_index,
-            "difficulty": item["difficulty"], # Giữ lại để debug nếu cần
-            "category": item["category"]      # (Tùy chọn) Lưu thêm tên chủ đề
+            "difficulty": item["difficulty"],
+            "category": item["category"]
         }
         
         formatted_questions.append(q_obj)
@@ -101,7 +143,7 @@ def fetch_and_process():
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(formatted_questions, f, indent=4, ensure_ascii=False)
 
-    print(f"\n✅ HOAN TAT! Da luu file vao: {file_path}")
+    print(f"✅ HOAN TAT! Da luu file vao: {file_path}")
     print(f"   - So luong: {len(formatted_questions)} cau")
     print(f"   - Format: Easy -> Medium -> Hard")
 

@@ -1,16 +1,9 @@
-# Makefile - Project Ai La Trieu Phu (Modular Version)
+# Makefile - Project Ai La Trieu Phu
+# Tuong thich: Windows CMD, PowerShell & MinGW64/Git Bash
 # Compiler: GCC
-# OS: Windows (MinGW)
 
 CC = gcc
-
-# CFLAGS: 
-# -Wall: Hien thi canh bao
-# -I...: Them cac thu muc header vao duong dan include
 CFLAGS = -Wall -I./src/common -I./src/server/include 
-
-# LDFLAGS:
-# -lws2_32: Link thu vien Winsock 2
 LDFLAGS = -lws2_32
 
 # --- DUONG DAN THU MUC ---
@@ -20,8 +13,33 @@ SRC_SERVER_DIR = src/server
 SRC_SERVER_MODULES = src/server/modules
 SRC_CLIENT_NATIVE = src/client/native
 
-# --- DANH SACH FILE NGUON SERVER ---
-# Bao gom main.c, cac modules chuc nang va cJSON
+# --- TU DONG PHAT HIEN MOI TRUONG ---
+ifeq ($(OS),Windows_NT)
+	# Day la Windows. Tiep tuc kiem tra xem co phai MinGW/Git Bash khong
+	ifdef MSYSTEM
+		# Moi truong MinGW / Git Bash (Co ho tro lenh Linux)
+		MKDIR_CMD = mkdir -p $(BIN_DIR)
+		CLEAN_CMD = rm -rf $(BIN_DIR)
+		RUN_CMD = ./$(BIN_DIR)/server.exe
+		FixPath = $1
+	else
+		# Moi truong Windows CMD / PowerShell thuan tuy
+		# Bat buoc make su dung cmd.exe de tranh loi
+		SHELL = cmd.exe
+		MKDIR_CMD = if not exist $(BIN_DIR) mkdir $(BIN_DIR)
+		CLEAN_CMD = if exist $(BIN_DIR) rmdir /s /q $(BIN_DIR)
+		RUN_CMD = .\\$(BIN_DIR)\\server.exe
+		FixPath = $(subst /,\,$1)
+	endif
+else
+	# Moi truong Linux / macOS
+	MKDIR_CMD = mkdir -p $(BIN_DIR)
+	CLEAN_CMD = rm -rf $(BIN_DIR)
+	RUN_CMD = ./$(BIN_DIR)/server.exe
+	FixPath = $1
+endif
+
+# --- DANH SACH SOURCE FILES ---
 SERVER_SOURCES = $(SRC_SERVER_DIR)/main.c \
                  $(SRC_SERVER_MODULES)/server_state.c \
                  $(SRC_SERVER_MODULES)/data_manager.c \
@@ -30,39 +48,35 @@ SERVER_SOURCES = $(SRC_SERVER_DIR)/main.c \
                  $(SRC_SERVER_MODULES)/connection_handler.c \
                  $(SRC_COMMON)/cJSON.c
 
-# --- DANH SACH FILE NGUON CLIENT DLL ---
-# Bao gom client_network.c va cJSON
 CLIENT_SOURCES = $(SRC_CLIENT_NATIVE)/client_network.c \
                  $(SRC_COMMON)/cJSON.c
 
 # --- TARGETS ---
 
-# 1. Target mac dinh: Tao bin -> Build Server -> Build Client DLL
 all: directories server client_dll
 
-# 2. Tao thu muc bin neu chua co
+# 1. Tao thu muc bin
 directories:
-	@mkdir -p $(BIN_DIR)
+	@$(MKDIR_CMD)
 
-# 3. Build Server (.exe)
+# 2. Build Server
 server: $(SERVER_SOURCES)
-	@echo "[BUILD] Building Server (Modular)..."
-	$(CC) $(CFLAGS) -o $(BIN_DIR)/server.exe $(SERVER_SOURCES) $(LDFLAGS)
-	@echo "[SUCCESS] Server built at $(BIN_DIR)/server.exe"
+	@echo [BUILD] Building Server...
+	$(CC) $(CFLAGS) -o $(call FixPath,$(BIN_DIR)/server.exe) $(SERVER_SOURCES) $(LDFLAGS)
+	@echo [SUCCESS] Server built at $(BIN_DIR)/server.exe
 
-# 4. Build Client Network DLL (.dll)
+# 3. Build Client DLL
 client_dll: $(CLIENT_SOURCES)
-	@echo "[BUILD] Building Client DLL..."
-	$(CC) $(CFLAGS) -shared -o $(BIN_DIR)/client_network.dll $(CLIENT_SOURCES) $(LDFLAGS)
-	@echo "[SUCCESS] Client DLL built at $(BIN_DIR)/client_network.dll"
+	@echo [BUILD] Building Client DLL...
+	$(CC) $(CFLAGS) -shared -o $(call FixPath,$(BIN_DIR)/client_network.dll) $(CLIENT_SOURCES) $(LDFLAGS)
+	@echo [SUCCESS] Client DLL built at $(BIN_DIR)/client_network.dll
 
-# 5. Don dep (Xoa file da build)
+# 4. Don dep
 clean:
-	@rm -f $(BIN_DIR)/server.exe
-	@rm -f $(BIN_DIR)/client_network.dll
-	@echo "[CLEAN] Cleanup complete."
+	@$(CLEAN_CMD)
+	@echo [CLEAN] Deleted binary files.
 
-# 6. Chay thu Server
+# 5. Chay Server
 run: server
-	@echo "[RUN] Starting Server..."
-	./$(BIN_DIR)/server.exe
+	@echo [RUN] Starting Server...
+	$(RUN_CMD)
