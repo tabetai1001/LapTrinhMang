@@ -154,14 +154,14 @@ class GameView(tk.Frame):
         for i, opt in enumerate(opts):
             self.btn_opts[i].config(text=f"{chr(65+i)}. {opt}")
         
-        self.time_left = data.get("max_time", 15)
+        self.time_left = data.get("max_time", 120)
         self.lbl_timer.config(text=f"⏱ {self.time_left}s", fg="white")
         self.count_down()
 
     def count_down(self):
         if not self.controller.is_in_game: return
         if self.time_left > 0:
-            color = WARNING_COLOR if self.time_left <= 5 else "white"
+            color = WARNING_COLOR if self.time_left <= 30 else "white"
             self.lbl_timer.config(text=f"⏱ {self.time_left}s", fg=color)
             self.time_left -= 1
             self.timer_id = self.after(1000, self.count_down)
@@ -171,7 +171,7 @@ class GameView(tk.Frame):
 
     def submit_answer(self, idx):
         self.stop_timer()
-        time_taken = 15 - self.time_left 
+        time_taken = 120 - self.time_left 
         if time_taken < 0: time_taken = 0
         
         for btn in self.btn_opts: btn.config(state=tk.DISABLED)

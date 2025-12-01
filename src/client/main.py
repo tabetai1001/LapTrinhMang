@@ -79,10 +79,15 @@ class ClientApp(tk.Tk):
                     self.frames["GameView"].start_game(opponent, mode=mode)
                     self.show_frame("GameView")
                 
-            # 3. Cập nhật danh sách Lobby
+            # 3. Cập nhật danh sách Lobby (real-time)
             elif msg_type == "LOBBY_LIST":
-                if hasattr(self.frames["LobbyView"], "refresh_lobby"):
-                    self.frames["LobbyView"].refresh_lobby()
+                # Server đã tăng lobby_version, cần refresh để thấy thay đổi
+                if hasattr(self.frames["LobbyView"], "update_list"):
+                    players = res.get("players", [])
+                    if players:  # Nếu server trả về danh sách luôn
+                        self.frames["LobbyView"].update_list(players)
+                    else:  # Nếu chỉ báo có thay đổi, gọi refresh
+                        self.frames["LobbyView"].refresh_lobby()
             
             # 4. Đối thủ thoát game (đầu hàng)
             elif msg_type == "OPPONENT_QUIT":

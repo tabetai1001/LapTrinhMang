@@ -228,6 +228,11 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                 cJSON_AddStringToObject(res, "opponent", "BOT");
                 cJSON_AddNumberToObject(res, "total_questions", 15);
                 cJSON_AddNumberToObject(res, "game_key", (double)game_sessions[gid].game_key);
+                
+                // Tăng lobby_version để các client khác thấy trạng thái IN_GAME real-time
+                EnterCriticalSection(&cs_lobby);
+                lobby_version++;
+                LeaveCriticalSection(&cs_lobby);
             } else {
                 cJSON_AddStringToObject(res, "type", "ERROR");
                 cJSON_AddStringToObject(res, "message", "Server busy");

@@ -67,7 +67,7 @@
 
 // Game Config
 #define MAX_QUESTIONS_PER_GAME 15 // Tối đa câu hỏi trong 1 trận
-#define MAX_TIME_PER_QUESTION 15  // Thời gian tối đa mỗi câu (giây)
+#define MAX_TIME_PER_QUESTION 120  // Thời gian tối đa mỗi câu (giây)
 #define BASE_SCORE 100            // Điểm cơ bản khi trả lời đúng
 
 #endif // PROTOCOL_H
