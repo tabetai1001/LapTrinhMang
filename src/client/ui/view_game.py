@@ -37,9 +37,7 @@ class GameView(tk.Frame):
         
         # --- LIFELINE BAR (Trợ giúp) ---
         self.lifeline_frame = tk.Frame(self, bg=BG_PRIMARY)
-        # Luôn tạo khung, sẽ pack/unpack khi start game
         
-        # Tạo 4 nút trợ giúp
         self.btn_5050 = create_styled_button(self.lifeline_frame, "50:50", lambda: self.use_lifeline(1), width=8, bg_color="#FF9800")
         self.btn_5050.pack(side=tk.LEFT, padx=5)
         
@@ -75,13 +73,13 @@ class GameView(tk.Frame):
         self.lbl_result.pack(pady=5)
 
         # --- QUIT BUTTON ---
-        create_styled_button(self, "Thoát Game", self.quit_game, DANGER_COLOR, width=15).pack(pady=10)
+        create_styled_button(self, "Dừng cuộc chơi / Thoát", self.quit_game_click, DANGER_COLOR, width=20).pack(pady=10)
+
+    def format_money(self, amount):
+        return "{:,.0f} đ".format(amount).replace(",", ".")
 
     def start_game(self, opponent_name="Máy", mode="PVP"):
-        # 1. Dọn dẹp timer cũ
         self.stop_timer() 
-        
-        # 2. Cập nhật trạng thái
         self.controller.is_in_game = True
         self.mode = mode
         self.opponent = opponent_name if mode == "PVP" else "BOT"
@@ -89,46 +87,44 @@ class GameView(tk.Frame):
         self.opp_score = 0
         self.lifelines_used = []
         
-        # 3. Hiển thị Info
-        mode_text = "CHƠI ĐƠN" if mode == "CLASSIC" else f"ĐỐI ĐẦU: {self.opponent}"
+        # UI Initial
+        mode_text = "CHƠI ĐƠN (Tiền thưởng)" if mode == "CLASSIC" else f"ĐỐI ĐẦU: {self.opponent}"
         self.lbl_info.config(text=f"{mode_text} | Điểm: 0")
         self.lbl_result.config(text="")
         
-        # 4. Reset nút Trợ giúp
+        # Reset Lifeline Buttons
         for btn in [self.btn_5050, self.btn_audit, self.btn_call, self.btn_swap]:
-            btn.config(state=tk.NORMAL, bg=BG_SECONDARY) # Reset về màu mặc định
+            btn.config(state=tk.NORMAL, bg=BG_SECONDARY)
 
-        # 5. Hiển thị khung trợ giúp (Cho CẢ 2 chế độ)
-        # FIX: Luôn hiển thị lifeline_frame
-        self.lifeline_frame.pack(pady=5, after=self.header)
+        if mode == "CLASSIC":
+            self.lifeline_frame.pack(pady=5, after=self.header)
+        else:
+            self.lifeline_frame.pack_forget()
 
-        # 6. Bắt đầu câu hỏi
         self.request_question()
 
     def stop_timer(self):
         if self.timer_id:
-            try:
-                self.after_cancel(self.timer_id)
-            except:
-                pass
+            try: self.after_cancel(self.timer_id)
+            except: pass
             self.timer_id = None
 
     def request_question(self):
         self.stop_timer()
         self.lbl_result.config(text="")
         
-        # Reset các nút đáp án
         for btn in self.btn_opts:
             btn.config(state=tk.NORMAL, bg="white", text="", relief=tk.RAISED)
-        
-        # FIX: Bật lại các quyền trợ giúp chưa dùng (cho CẢ 2 chế độ)
-        btn_map = {1: self.btn_5050, 2: self.btn_audit, 3: self.btn_call, 4: self.btn_swap}
-        for lid, btn in btn_map.items():
-            if lid not in self.lifelines_used:
-                btn.config(state=tk.NORMAL, bg=BG_SECONDARY)
-            else:
-                btn.config(state=tk.DISABLED, bg="gray")
             
+        # Bật lại quyền trợ giúp chưa dùng (Classic)
+        if self.mode == "CLASSIC":
+            btn_map = {1: self.btn_5050, 2: self.btn_audit, 3: self.btn_call, 4: self.btn_swap}
+            for lid, btn in btn_map.items():
+                if lid not in self.lifelines_used:
+                    btn.config(state=tk.NORMAL, bg=BG_SECONDARY)
+                else:
+                    btn.config(state=tk.DISABLED, bg="gray")
+
         res = self.controller.network.send_request({"type": "REQUEST_QUESTION"})
         
         if res.get("type") == "QUESTION":
@@ -146,10 +142,13 @@ class GameView(tk.Frame):
         
         self.lbl_question.config(text=f"Câu {q_num}/{total}:\n{data['question']}")
         
-        score_info = f"Bạn: {self.my_score}"
-        if self.mode == "PVP":
-            score_info += f" | {self.opponent}: {self.opp_score}"
-        self.lbl_info.config(text=score_info)
+        # Update Score UI
+        if self.mode == "CLASSIC":
+            # Trong Classic, self.my_score là số tiền thưởng server gửi về
+            money = self.format_money(self.my_score)
+            self.lbl_info.config(text=f"Câu {q_num} | Tiền thưởng hiện tại: {money}")
+        else:
+            self.lbl_info.config(text=f"Bạn: {self.my_score} | {self.opponent}: {self.opp_score}")
         
         opts = data["options"]
         for i, opt in enumerate(opts):
@@ -161,7 +160,6 @@ class GameView(tk.Frame):
 
     def count_down(self):
         if not self.controller.is_in_game: return
-
         if self.time_left > 0:
             color = WARNING_COLOR if self.time_left <= 5 else "white"
             self.lbl_timer.config(text=f"⏱ {self.time_left}s", fg=color)
@@ -173,12 +171,9 @@ class GameView(tk.Frame):
 
     def submit_answer(self, idx):
         self.stop_timer()
-        
         time_taken = 15 - self.time_left 
         if time_taken < 0: time_taken = 0
-        if time_taken > 15: time_taken = 15
         
-        # Khóa tất cả nút
         for btn in self.btn_opts: btn.config(state=tk.DISABLED)
         for btn in [self.btn_5050, self.btn_audit, self.btn_call, self.btn_swap]:
             btn.config(state=tk.DISABLED)
@@ -209,11 +204,15 @@ class GameView(tk.Frame):
             self.btn_opts[correct].config(bg=SUCCESS_COLOR)
         
         if is_correct:
-            self.lbl_result.config(text=f"CHÍNH XÁC! +{res.get('earned_score')} điểm", fg=SUCCESS_COLOR)
+            if self.mode == "CLASSIC":
+                money = self.format_money(self.my_score)
+                self.lbl_result.config(text=f"ĐÚNG! Bạn có: {money}", fg=SUCCESS_COLOR)
+            else:
+                self.lbl_result.config(text=f"CHÍNH XÁC! +{res.get('earned_score')} điểm", fg=SUCCESS_COLOR)
         else:
             msg = "HẾT GIỜ!" if my_ans == -1 else "SAI RỒI!"
             self.lbl_result.config(text=msg, fg=DANGER_COLOR)
-        
+            
         game_status = res.get("game_status")
         
         if game_status == "FINISHED":
@@ -231,11 +230,6 @@ class GameView(tk.Frame):
 
     def wait_opponent(self):
         if not self.controller.is_in_game: return
-        
-        # Khóa nút trợ giúp khi đang chờ
-        for btn in [self.btn_5050, self.btn_audit, self.btn_call, self.btn_swap]:
-            btn.config(state=tk.DISABLED)
-            
         res = self.controller.network.send_request({"type": "CHECK_GAME_STATUS"})
         
         status = res.get("game_status")
@@ -265,7 +259,7 @@ class GameView(tk.Frame):
                     if lid in btn_map:
                         btn_map[lid].config(state=tk.DISABLED, bg="gray")
                 else:
-                    messagebox.showwarning("Lỗi", "Không thể sử dụng (Server từ chối).")
+                    messagebox.showwarning("Lỗi", "Không thể sử dụng.")
 
     def handle_lifeline_effect(self, lid, data):
         if lid == 1: # 50:50
@@ -275,7 +269,7 @@ class GameView(tk.Frame):
                 
         elif lid == 2: # Audience
             percents = data.get("percentages", [])
-            msg = f"A: {percents[0]}% | B: {percents[1]}%\nC: {percents[2]}% | D: {percents[3]}%"
+            msg = f"A: {percents[0]}%\nB: {percents[1]}%\nC: {percents[2]}%\nD: {percents[3]}%"
             messagebox.showinfo("Khán giả bình chọn", msg)
             
         elif lid == 3: # Call
@@ -288,53 +282,16 @@ class GameView(tk.Frame):
             new_q = data.get("new_question")
             new_opts = data.get("new_options")
             self.current_q_id = data.get("new_id")
-            
             self.lbl_question.config(text=f"CÂU HỎI MỚI:\n{new_q}")
             for i, opt in enumerate(new_opts):
                 self.btn_opts[i].config(text=f"{chr(65+i)}. {opt}", state=tk.NORMAL, bg="white")
 
     def show_opponent_quit(self, opponent_name):
-        """Hiển thị thông báo khi đối thủ đầu hàng"""
         self.stop_timer()
         self.controller.is_in_game = False
-        
-        # Tạo cửa sổ popup tùy chỉnh
-        popup = tk.Toplevel(self)
-        popup.title("Chiến thắng!")
-        popup.geometry("400x250")
-        popup.configure(bg=BG_PRIMARY)
-        popup.resizable(False, False)
-        
-        # Căn giữa cửa sổ game (không phải màn hình)
-        popup.transient(self.controller)
-        popup.grab_set()
-        
-        # Tính toán vị trí để hiển thị ở giữa cửa sổ game
-        self.controller.update_idletasks()
-        x = self.controller.winfo_x() + (self.controller.winfo_width() // 2) - 200
-        y = self.controller.winfo_y() + (self.controller.winfo_height() // 2) - 125
-        popup.geometry(f"+{x}+{y}")
-        
-        # Nội dung
-        tk.Label(popup, text="🏆 CHIẾN THẮNG! 🏆", 
-                font=("Segoe UI", 20, "bold"), fg=SUCCESS_COLOR, bg=BG_PRIMARY).pack(pady=20)
-        
-        tk.Label(popup, text="Đối thủ đã đầu hàng!\n\nBạn đã thắng trận đấu này.", 
-                font=("Segoe UI", 14), fg=TEXT_LIGHT, bg=BG_PRIMARY, justify=tk.CENTER).pack(pady=10)
-        
-        tk.Label(popup, text=f"Điểm của bạn: {self.my_score}", 
-                font=("Segoe UI", 12, "bold"), fg="white", bg=BG_PRIMARY).pack(pady=5)
-        
-        # Nút quay về sảnh
-        def return_to_lobby():
-            popup.destroy()
-            self.quit_game()
-        
-        create_styled_button(popup, "Quay về sảnh chờ", return_to_lobby, SUCCESS_COLOR, width=20).pack(pady=20)
-        
-        # Đợi người dùng đóng popup
-        popup.wait_window()
-    
+        messagebox.showinfo("Chiến thắng", f"Đối thủ {opponent_name} đã đầu hàng!\nBạn thắng.")
+        self.quit_game()
+
     def show_game_over_pvp(self, you_win):
         self.stop_timer()
         self.controller.is_in_game = False
@@ -346,7 +303,20 @@ class GameView(tk.Frame):
     def show_game_over_classic(self):
         self.stop_timer()
         self.controller.is_in_game = False
-        messagebox.showinfo("Hoàn thành", f"Chúc mừng!\nBạn đã hoàn thành lượt chơi.\nTổng điểm: {self.my_score}")
+        money = self.format_money(self.my_score)
+        msg = f"Kết thúc lượt chơi!\nSố tiền thưởng bạn nhận được:\n{money}"
+        messagebox.showinfo("Tổng kết", msg)
+        self.quit_game()
+
+    def quit_game_click(self):
+        if self.mode == "CLASSIC" and self.controller.is_in_game:
+            money = self.format_money(self.my_score)
+            ans = messagebox.askyesno("Dừng cuộc chơi", f"Bạn muốn dừng lại và bảo toàn {money}?")
+            if not ans: return
+        elif self.mode == "PVP" and self.controller.is_in_game:
+            ans = messagebox.askyesno("Thoát game", "Thoát game giữa chừng sẽ bị xử thua. Bạn chắc chắn chứ?")
+            if not ans: return
+            
         self.quit_game()
 
     def quit_game(self):

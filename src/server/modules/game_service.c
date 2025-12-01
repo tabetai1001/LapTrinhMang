@@ -12,7 +12,27 @@
 #define MAX_TIME_PER_QUESTION 15
 #define BASE_SCORE 100
 
+const int PRIZE_LADDER[15] = {
+    200000, 400000, 600000, 1000000, 2000000,       // Câu 1-5
+    3000000, 6000000, 10000000, 14000000, 22000000, // Câu 6-10
+    30000000, 40000000, 80000000, 150000000, 250000000 // Câu 11-15
+};
+
 // --- CÁC HÀM HELPER ---
+
+int get_current_prize(int q_index) {
+    if (q_index < 0 || q_index >= 15) return 0;
+    return PRIZE_LADDER[q_index];
+}
+
+int get_safe_reward(int current_q_index) {
+    // current_q_index là câu đang trả lời và bị sai.
+    // Ví dụ: Đang trả lời câu 6 (index 5) mà sai -> Về mốc câu 5 (index 4)
+    
+    if (current_q_index < 5) return 0; // Chưa qua câu 5 -> 0đ
+    if (current_q_index < 10) return PRIZE_LADDER[4]; // Qua câu 5, chưa qua 10 -> 2.000.000
+    return PRIZE_LADDER[9]; // Qua câu 10 -> 22.000.000
+}
 
 int compare_scores(const void *a, const void *b) {
     PlayerScore *p1 = (PlayerScore *)a;
