@@ -3,6 +3,14 @@
 ## 📋 Mô tả dự án
 Game "Ai Là Triệu Phú" đa người chơi với kiến trúc Client-Server, hỗ trợ chơi PvP (Player vs Player) và Classic mode.
 
+**🎉 Cross-Platform Support:**
+- ✅ Linux (Ubuntu, Debian, Fedora, Arch, etc.)
+- ✅ WSL (Windows Subsystem for Linux)
+- ✅ macOS
+- ⚠️ Windows native (cần cấu hình riêng)
+
+> **Xem hướng dẫn chạy trên WSL/Linux:** [README_WSL.md](README_WSL.md)
+
 ---
 
 ## 🛠️ CÔNG NGHỆ SỬ DỤNG
@@ -15,22 +23,23 @@ Game "Ai Là Triệu Phú" đa người chơi với kiến trúc Client-Server, 
 ### Server Side (C Language)
 
 #### 1. Socket Programming
-**Windows Sockets API (Winsock2)**
+**POSIX Sockets API (cross-platform)**
 - `socket()`: Tạo socket
 - `bind()`: Gán địa chỉ IP và port
 - `listen()`: Lắng nghe kết nối
 - `accept()`: Chấp nhận kết nối từ client
 - `recv()` / `send()`: Nhận/gửi dữ liệu
-- `closesocket()`: Đóng kết nối
+- `close()`: Đóng kết nối
 
 #### 2. Multi-threading & Concurrency
 **Thread Management:**
-- `CreateThread()`: Tạo thread mới cho mỗi client
+- `pthread_create()`: Tạo thread mới cho mỗi client
+- `pthread_detach()`: Cho phép thread tự giải phóng tài nguyên
 - Thread pool để xử lý nhiều client đồng thời
 
 **Synchronization (Đồng bộ hóa):**
-- `CRITICAL_SECTION`: Bảo vệ tài nguyên dùng chung
-- `EnterCriticalSection()` / `LeaveCriticalSection()`
+- `pthread_mutex_t`: Bảo vệ tài nguyên dùng chung
+- `pthread_mutex_lock()` / `pthread_mutex_unlock()`
 - Áp dụng cho: game sessions, chat messages, client list, file I/O
 
 #### 3. Data Structures

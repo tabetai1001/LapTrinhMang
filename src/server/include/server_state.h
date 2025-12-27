@@ -26,13 +26,13 @@ extern ChatMessage chat_messages[MAX_CHAT_MESSAGES];
 extern int chat_count;
 extern int chat_version;
 
-// Critical Sections
-extern CRITICAL_SECTION cs_clients;
-extern CRITICAL_SECTION cs_games;
-extern CRITICAL_SECTION cs_history;
-extern CRITICAL_SECTION cs_lobby;
-extern CRITICAL_SECTION cs_data; // Mới: Khóa để ghi file account an toàn
-extern CRITICAL_SECTION cs_chat;
+// Mutexes (Linux equivalent of Critical Sections)
+extern pthread_mutex_t cs_clients;
+extern pthread_mutex_t cs_games;
+extern pthread_mutex_t cs_history;
+extern pthread_mutex_t cs_lobby;
+extern pthread_mutex_t cs_data; // Mới: Khóa để ghi file account an toàn
+extern pthread_mutex_t cs_chat;
 
 void init_server_state();
 

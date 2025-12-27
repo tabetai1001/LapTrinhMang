@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-// Include server_state.h đầu tiên vì nó chứa models.h (đã có winsock2.h)
+#include <sys/time.h>
+#include <unistd.h>
+// Include server_state.h đầu tiên vì nó chứa models.h
 #include "../include/server_state.h" 
 #include "../../common/protocol.h"
 #include "../../common/cJSON.h"
@@ -11,6 +13,13 @@
 
 #define MAX_TIME_PER_QUESTION 120
 #define BASE_SCORE 100
+
+// Helper function to replace GetTickCount (returns milliseconds)
+static long long get_tick_count_ms() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (long long)(tv.tv_sec) * 1000LL + (long long)(tv.tv_usec) / 1000LL;
+}
 
 const int PRIZE_LADDER[15] = {
     200000, 400000, 600000, 1000000, 2000000,       // Câu 1-5
@@ -81,15 +90,15 @@ int get_random_question_id_by_level(int level, int *used_ids, int used_count) {
 // --- CÁC HÀM LOGIC GAME CHÍNH ---
 
 int create_game_session(const char* p1, const char* p2, int num_questions) {
-    EnterCriticalSection(&cs_games);
+    pthread_mutex_lock(&cs_games);
     for (int i = 0; i < MAX_GAME_SESSIONS; i++) {
         if (!game_sessions[i].is_active) {
             // Reset toàn bộ session
             memset(&game_sessions[i], 0, sizeof(GameSession));
             
             // Tạo Game Key unique dựa trên thời gian
-            long long game_key = (long long)GetTickCount64() + (long long)time(NULL) * 1000000LL + (i * 1000);
-            Sleep(1); // Delay nhỏ để tránh trùng key nếu tạo quá nhanh
+            long long game_key = (long long)get_tick_count_ms() + (long long)time(NULL) * 1000000LL + (i * 1000);
+            usleep(1000); // Delay nhỏ để tránh trùng key nếu tạo quá nhanh
             
             game_sessions[i].id = i;
             game_sessions[i].game_key = game_key;
@@ -110,7 +119,7 @@ int create_game_session(const char* p1, const char* p2, int num_questions) {
             memset(game_sessions[i].p1_lifelines, 0, sizeof(game_sessions[i].p1_lifelines));
             memset(game_sessions[i].p2_lifelines, 0, sizeof(game_sessions[i].p2_lifelines));
             
-            unsigned int game_seed = (unsigned int)time(NULL) + i * 1000 + (unsigned int)(GetTickCount() % 10000);
+            unsigned int game_seed = (unsigned int)time(NULL) + i * 1000 + (unsigned int)(get_tick_count_ms() % 10000);
             srand(game_seed);
             
             // === TẠO BỘ CÂU HỎI THEO ĐỘ KHÓ ===
@@ -148,11 +157,11 @@ int create_game_session(const char* p1, const char* p2, int num_questions) {
                 // printf("[Game] Session %d Q%d: ID=%d (Lv %d)\n", i, j+1, qid, level);
             }
             
-            LeaveCriticalSection(&cs_games);
+            pthread_mutex_unlock(&cs_games);
             return i;
         }
     }
-    LeaveCriticalSection(&cs_games);
+    pthread_mutex_unlock(&cs_games);
     return -1;
 }
 

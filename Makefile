@@ -1,45 +1,46 @@
 # Makefile - Project Ai La Trieu Phu
-# Tuong thich: Windows CMD, PowerShell & MinGW64/Git Bash
+# Compatible: Linux, WSL, Windows (MinGW/Git Bash), macOS
 # Compiler: GCC
 
 CC = gcc
 CFLAGS = -Wall -I./src/common -I./src/server/include 
-LDFLAGS = -lws2_32
 
-# --- DUONG DAN THU MUC ---
+# --- Tự động phát hiện môi trường ---
+ifeq ($(OS),Windows_NT)
+	# Windows environment
+	LDFLAGS = -lws2_32
+	SHELL = cmd.exe
+	MKDIR_CMD = if not exist $(BIN_DIR) mkdir $(BIN_DIR)
+	CLEAN_CMD = if exist $(BIN_DIR) rmdir /s /q $(BIN_DIR)
+	SERVER_EXEC = server.exe
+	CLIENT_LIB = client_network.dll
+	RUN_CMD = .\\$(BIN_DIR)\\$(SERVER_EXEC)
+	FixPath = $(subst /,\,$1)
+else
+	# Linux/WSL/macOS
+	UNAME_S := $(shell uname -s)
+	ifeq ($(UNAME_S),Linux)
+		LDFLAGS = -lpthread
+	endif
+	ifeq ($(UNAME_S),Darwin)
+		LDFLAGS = -lpthread
+	endif
+	MKDIR_CMD = mkdir -p $(BIN_DIR)
+	CLEAN_CMD = rm -rf $(BIN_DIR)
+	SERVER_EXEC = server
+	CLIENT_LIB = client_network.so
+	RUN_CMD = ./$(BIN_DIR)/$(SERVER_EXEC)
+	FixPath = $1
+endif
+
+# --- Đường dẫn thư mục ---
 BIN_DIR = bin
 SRC_COMMON = src/common
 SRC_SERVER_DIR = src/server
 SRC_SERVER_MODULES = src/server/modules
 SRC_CLIENT_NATIVE = src/client/native
 
-# --- TU DONG PHAT HIEN MOI TRUONG ---
-ifeq ($(OS),Windows_NT)
-	# Day la Windows. Tiep tuc kiem tra xem co phai MinGW/Git Bash khong
-	ifdef MSYSTEM
-		# Moi truong MinGW / Git Bash (Co ho tro lenh Linux)
-		MKDIR_CMD = mkdir -p $(BIN_DIR)
-		CLEAN_CMD = rm -rf $(BIN_DIR)
-		RUN_CMD = ./$(BIN_DIR)/server.exe
-		FixPath = $1
-	else
-		# Moi truong Windows CMD / PowerShell thuan tuy
-		# Bat buoc make su dung cmd.exe de tranh loi
-		SHELL = cmd.exe
-		MKDIR_CMD = if not exist $(BIN_DIR) mkdir $(BIN_DIR)
-		CLEAN_CMD = if exist $(BIN_DIR) rmdir /s /q $(BIN_DIR)
-		RUN_CMD = .\\$(BIN_DIR)\\server.exe
-		FixPath = $(subst /,\,$1)
-	endif
-else
-	# Moi truong Linux / macOS
-	MKDIR_CMD = mkdir -p $(BIN_DIR)
-	CLEAN_CMD = rm -rf $(BIN_DIR)
-	RUN_CMD = ./$(BIN_DIR)/server.exe
-	FixPath = $1
-endif
-
-# --- DANH SACH SOURCE FILES ---
+# --- Danh sách source files ---
 SERVER_SOURCES = $(SRC_SERVER_DIR)/main.c \
                  $(SRC_SERVER_MODULES)/server_state.c \
                  $(SRC_SERVER_MODULES)/data_manager.c \
@@ -53,30 +54,36 @@ CLIENT_SOURCES = $(SRC_CLIENT_NATIVE)/client_network.c \
 
 # --- TARGETS ---
 
-all: directories server client_dll
+all: directories server client_lib
 
-# 1. Tao thu muc bin
+# 1. Tạo thư mục bin
 directories:
 	@$(MKDIR_CMD)
 
 # 2. Build Server
 server: $(SERVER_SOURCES)
 	@echo [BUILD] Building Server...
-	$(CC) $(CFLAGS) -o $(call FixPath,$(BIN_DIR)/server.exe) $(SERVER_SOURCES) $(LDFLAGS)
-	@echo [SUCCESS] Server built at $(BIN_DIR)/server.exe
+	$(CC) $(CFLAGS) -o $(call FixPath,$(BIN_DIR)/$(SERVER_EXEC)) $(SERVER_SOURCES) $(LDFLAGS)
+	@echo [SUCCESS] Server built at $(BIN_DIR)/$(SERVER_EXEC)
 
-# 3. Build Client DLL
-client_dll: $(CLIENT_SOURCES)
-	@echo [BUILD] Building Client DLL...
-	$(CC) $(CFLAGS) -shared -o $(call FixPath,$(BIN_DIR)/client_network.dll) $(CLIENT_SOURCES) $(LDFLAGS)
-	@echo [SUCCESS] Client DLL built at $(BIN_DIR)/client_network.dll
+# 3. Build Client Native Library
+client_lib: $(CLIENT_SOURCES)
+	@echo [BUILD] Building Client Native Library...
+ifeq ($(OS),Windows_NT)
+	$(CC) $(CFLAGS) -shared -o $(call FixPath,$(BIN_DIR)/$(CLIENT_LIB)) $(CLIENT_SOURCES) $(LDFLAGS)
+else
+	$(CC) $(CFLAGS) -shared -fPIC -o $(BIN_DIR)/$(CLIENT_LIB) $(CLIENT_SOURCES) $(LDFLAGS)
+endif
+	@echo [SUCCESS] Client library built at $(BIN_DIR)/$(CLIENT_LIB)
 
-# 4. Don dep
+# 4. Dọn dẹp
 clean:
 	@$(CLEAN_CMD)
 	@echo [CLEAN] Deleted binary files.
 
-# 5. Chay Server
+# 5. Chạy Server
 run: server
 	@echo [RUN] Starting Server...
 	$(RUN_CMD)
+
+.PHONY: all directories server client_lib clean run

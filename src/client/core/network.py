@@ -10,13 +10,22 @@ class NetworkManager:
         self.lib = self._load_dll()
 
     def _load_dll(self):
-        """Tìm và load thư viện DLL từ thư mục bin"""
-        # Logic tìm file DLL thông minh
+        """Tìm và load thư viện native (DLL trên Windows, SO trên Linux)"""
+        # Phát hiện hệ điều hành
+        import platform
+        system = platform.system()
+        
+        if system == "Windows":
+            lib_name = "client_network.dll"
+        else:  # Linux, Darwin (macOS)
+            lib_name = "client_network.so"
+        
+        # Logic tìm file thông minh
         possible_paths = [
-            os.path.join("bin", "client_network.dll"), # Chạy từ root
-            os.path.join("..", "..", "bin", "client_network.dll"), # Chạy từ src/client
-            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "bin", "client_network.dll"),
-            "./client_network.dll"
+            os.path.join("bin", lib_name), # Chạy từ root
+            os.path.join("..", "..", "bin", lib_name), # Chạy từ src/client
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "bin", lib_name),
+            f"./{lib_name}"
         ]
 
         dll_path = None
@@ -26,7 +35,7 @@ class NetworkManager:
                 break
         
         if dll_path is None:
-            messagebox.showerror("Lỗi nghiêm trọng", "Không tìm thấy 'client_network.dll'!\nHãy kiểm tra thư mục 'bin'.")
+            messagebox.showerror("Lỗi nghiêm trọng", f"Không tìm thấy '{lib_name}'!\nHãy kiểm tra thư mục 'bin'.")
             sys.exit(1)
 
         try:

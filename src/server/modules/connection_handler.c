@@ -2,7 +2,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h> // Dùng cho hàm time()
+#include <unistd.h>
+#include <time.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include "../../common/protocol.h"
 #include "../../common/cJSON.h"
 #include "../include/connection_handler.h"
@@ -16,13 +20,14 @@
 extern int get_current_prize(int q_index);
 extern int get_safe_reward(int current_q_index);
 
-DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
-    SOCKET client_socket = (SOCKET)client_socket_ptr;
+void* handle_client(void* client_socket_ptr) {
+    int client_socket = *(int*)client_socket_ptr;
+    free(client_socket_ptr);  // Free the allocated memory
     char buffer[BUFFER_SIZE];
     int n, client_index = -1;
 
     // 1. Đăng ký slot trong mảng clients
-    EnterCriticalSection(&cs_clients);
+    pthread_mutex_lock(&cs_clients);
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (clients[i].socket == 0) {
             clients[i].socket = client_socket;
@@ -38,10 +43,10 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
             break;
         }
     }
-    LeaveCriticalSection(&cs_clients);
+    pthread_mutex_unlock(&cs_clients);
 
     if (client_index == -1) { 
-        closesocket(client_socket); 
+        close(client_socket); 
         return 0; 
     }
 
@@ -74,7 +79,7 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
             cJSON *p = cJSON_GetObjectItem(req, "pass");
             int score = 0;
             if (u && p && process_login(u->valuestring, p->valuestring, &score)) {
-                EnterCriticalSection(&cs_clients);
+                pthread_mutex_lock(&cs_clients);
                 strcpy(clients[client_index].username, u->valuestring);
                 clients[client_index].is_logged_in = 1;
                 clients[client_index].score = score;
@@ -82,20 +87,20 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                 clients[client_index].opponent_quit = 0;
                 
                 // Sync chat version
-                EnterCriticalSection(&cs_chat);
+                pthread_mutex_lock(&cs_chat);
                 clients[client_index].last_chat_version = chat_version;
-                LeaveCriticalSection(&cs_chat);
+                pthread_mutex_unlock(&cs_chat);
                 
-                LeaveCriticalSection(&cs_clients);
+                pthread_mutex_unlock(&cs_clients);
 
                 cJSON_AddStringToObject(res, "type", MSG_TYPE_LOGIN_SUCCESS);
                 cJSON_AddStringToObject(res, "user", u->valuestring);
                 cJSON_AddNumberToObject(res, "total_score", score);
                 
-                EnterCriticalSection(&cs_lobby);
+                pthread_mutex_lock(&cs_lobby);
                 lobby_version++;
                 clients[client_index].last_lobby_version = lobby_version;
-                LeaveCriticalSection(&cs_lobby);
+                pthread_mutex_unlock(&cs_lobby);
             } else {
                 cJSON_AddStringToObject(res, "type", MSG_TYPE_LOGIN_FAIL);
                 cJSON_AddStringToObject(res, "message", "Sai tai khoan/mat khau");
@@ -103,8 +108,8 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
         }
         // --- XỬ LÝ POLLING ---
         else if (strcmp(type->valuestring, MSG_TYPE_POLL) == 0) {
-            EnterCriticalSection(&cs_clients);
-            EnterCriticalSection(&cs_games);
+            pthread_mutex_lock(&cs_clients);
+            pthread_mutex_lock(&cs_games);
             
             // Ưu tiên 0: Đối thủ thoát (PvP)
             if (clients[client_index].opponent_quit == 1) {
@@ -142,39 +147,39 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
             }
             // Ưu tiên 3: Chat
             else {
-                EnterCriticalSection(&cs_chat);
+                pthread_mutex_lock(&cs_chat);
                 int current_chat = chat_version;
                 int client_chat = clients[client_index].last_chat_version;
-                LeaveCriticalSection(&cs_chat);
+                pthread_mutex_unlock(&cs_chat);
                 
                 if (client_chat != current_chat && chat_count > 0) {
-                    EnterCriticalSection(&cs_chat);
+                    pthread_mutex_lock(&cs_chat);
                     int last_idx = (chat_count - 1) % MAX_CHAT_MESSAGES;
                     cJSON_AddStringToObject(res, "type", MSG_TYPE_NEW_CHAT_MESSAGE);
                     cJSON_AddStringToObject(res, "username", chat_messages[last_idx].username);
                     cJSON_AddStringToObject(res, "message", chat_messages[last_idx].message);
                     clients[client_index].last_chat_version = current_chat;
-                    LeaveCriticalSection(&cs_chat);
+                    pthread_mutex_unlock(&cs_chat);
                 }
                 // Ưu tiên 4: Lobby Update
                 else {
-                    EnterCriticalSection(&cs_lobby);
+                    pthread_mutex_lock(&cs_lobby);
                     int current_lobby = lobby_version;
                     int client_lobby = clients[client_index].last_lobby_version;
-                    LeaveCriticalSection(&cs_lobby);
+                    pthread_mutex_unlock(&cs_lobby);
                     
                     if (client_lobby != current_lobby) {
                         cJSON_AddStringToObject(res, "type", MSG_TYPE_LOBBY_LIST);
-                        EnterCriticalSection(&cs_lobby);
+                        pthread_mutex_lock(&cs_lobby);
                         clients[client_index].last_lobby_version = current_lobby;
-                        LeaveCriticalSection(&cs_lobby);
+                        pthread_mutex_unlock(&cs_lobby);
                     } else {
                         cJSON_AddStringToObject(res, "type", MSG_TYPE_NO_EVENT);
                     }
                 }
             }
-            LeaveCriticalSection(&cs_games);
-            LeaveCriticalSection(&cs_clients);
+            pthread_mutex_unlock(&cs_games);
+            pthread_mutex_unlock(&cs_clients);
         }
         // --- GET LOBBY LIST ---
         else if (strcmp(type->valuestring, MSG_TYPE_GET_LOBBY_LIST) == 0) {
@@ -190,7 +195,7 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                         cJSON *pObj = cJSON_CreateObject();
                         cJSON_AddStringToObject(pObj, "name", u->valuestring);
                         int is_on = 0, is_game = 0;
-                        EnterCriticalSection(&cs_clients);
+                        pthread_mutex_lock(&cs_clients);
                         for(int k=0; k<MAX_CLIENTS; k++) {
                             if(clients[k].socket && clients[k].is_logged_in && strcmp(clients[k].username, u->valuestring)==0) {
                                 is_on = 1; 
@@ -198,7 +203,7 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                                 break;
                             }
                         }
-                        LeaveCriticalSection(&cs_clients);
+                        pthread_mutex_unlock(&cs_clients);
                         cJSON_AddStringToObject(pObj, "status", !is_on ? "OFFLINE" : (is_game ? "IN_GAME" : "FREE"));
                         cJSON_AddItemToArray(arr, pObj);
                     }
@@ -210,7 +215,7 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
         }
         // --- START CLASSIC ---
         else if (strcmp(type->valuestring, MSG_TYPE_START_CLASSIC) == 0) {
-            EnterCriticalSection(&cs_clients);
+            pthread_mutex_lock(&cs_clients);
             int gid = create_game_session(clients[client_index].username, "", 15);
             
             if (gid != -1) {
@@ -230,14 +235,14 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                 cJSON_AddNumberToObject(res, "game_key", (double)game_sessions[gid].game_key);
                 
                 // Tăng lobby_version để các client khác thấy trạng thái IN_GAME real-time
-                EnterCriticalSection(&cs_lobby);
+                pthread_mutex_lock(&cs_lobby);
                 lobby_version++;
-                LeaveCriticalSection(&cs_lobby);
+                pthread_mutex_unlock(&cs_lobby);
             } else {
                 cJSON_AddStringToObject(res, "type", "ERROR");
                 cJSON_AddStringToObject(res, "message", "Server busy");
             }
-            LeaveCriticalSection(&cs_clients);
+            pthread_mutex_unlock(&cs_clients);
         }
         // --- INVITE ---
         else if (strcmp(type->valuestring, MSG_TYPE_INVITE_PLAYER) == 0) {
@@ -245,7 +250,7 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
             cJSON *nq = cJSON_GetObjectItem(req, "num_questions");
             int n = nq ? nq->valueint : 5;
             
-            EnterCriticalSection(&cs_clients);
+            pthread_mutex_lock(&cs_clients);
             int t_idx = find_client_index(target->valuestring);
             if (t_idx != -1 && clients[t_idx].is_busy == 0) {
                 char buf[100]; sprintf(buf, "%s:%d", clients[client_index].username, n);
@@ -256,12 +261,12 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                 cJSON_AddStringToObject(res, "type", MSG_TYPE_INVITE_FAIL);
                 cJSON_AddStringToObject(res, "message", "Player busy or offline");
             }
-            LeaveCriticalSection(&cs_clients);
+            pthread_mutex_unlock(&cs_clients);
         }
         // --- ACCEPT INVITE ---
         else if (strcmp(type->valuestring, MSG_TYPE_ACCEPT_INVITE) == 0) {
             cJSON *inviter = cJSON_GetObjectItem(req, "from");
-            EnterCriticalSection(&cs_clients);
+            pthread_mutex_lock(&cs_clients);
             int i_idx = find_client_index(inviter->valuestring);
             if (i_idx != -1) {
                 char *col = strchr(clients[client_index].pending_invite_from, ':');
@@ -280,7 +285,7 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                     clients[i_idx].game_session_id = gid;
                     clients[i_idx].current_question_index = 0;
                     
-                    EnterCriticalSection(&cs_lobby); lobby_version++; LeaveCriticalSection(&cs_lobby);
+                    pthread_mutex_lock(&cs_lobby); lobby_version++; pthread_mutex_unlock(&cs_lobby);
                     
                     cJSON_AddStringToObject(res, "type", MSG_TYPE_GAME_START);
                     cJSON_AddStringToObject(res, "mode", "PVP");
@@ -289,26 +294,26 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                     cJSON_AddNumberToObject(res, "game_key", (double)game_sessions[gid].game_key);
                 }
             }
-            LeaveCriticalSection(&cs_clients);
+            pthread_mutex_unlock(&cs_clients);
         }
         // --- REJECT INVITE ---
         else if (strcmp(type->valuestring, MSG_TYPE_REJECT_INVITE) == 0) {
              cJSON *from = cJSON_GetObjectItem(req, "from");
-             EnterCriticalSection(&cs_clients);
+             pthread_mutex_lock(&cs_clients);
              int iidx = find_client_index(from->valuestring);
              strcpy(clients[client_index].pending_invite_from, "");
              if(iidx!=-1) { clients[iidx].is_busy=0; strcpy(clients[iidx].current_opponent, ""); }
-             LeaveCriticalSection(&cs_clients);
+             pthread_mutex_unlock(&cs_clients);
              cJSON_AddStringToObject(res, "type", "REJECT_SUCCESS");
         }
         // --- USE LIFELINE ---
         else if (strcmp(type->valuestring, MSG_TYPE_USE_LIFELINE) == 0) {
             cJSON *lid = cJSON_GetObjectItem(req, "lifeline_id");
             if (lid) {
-                EnterCriticalSection(&cs_games);
+                pthread_mutex_lock(&cs_games);
                 int gid = clients[client_index].game_session_id;
                 cJSON *result_data = process_lifeline(gid, clients[client_index].username, lid->valueint);
-                LeaveCriticalSection(&cs_games);
+                pthread_mutex_unlock(&cs_games);
                 
                 if (result_data) {
                     cJSON_AddStringToObject(res, "type", MSG_TYPE_LIFELINE_RES);
@@ -320,8 +325,8 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
         }
         // --- REQUEST QUESTION ---
         else if (strcmp(type->valuestring, MSG_TYPE_REQUEST_QUESTION) == 0) {
-            EnterCriticalSection(&cs_clients);
-            EnterCriticalSection(&cs_games);
+            pthread_mutex_lock(&cs_clients);
+            pthread_mutex_lock(&cs_games);
             int gid = clients[client_index].game_session_id;
             int q_idx = clients[client_index].current_question_index;
             
@@ -362,8 +367,8 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                 cJSON_AddStringToObject(res, "type", "ERROR");
                 cJSON_AddStringToObject(res, "message", "Invalid Session");
             }
-            LeaveCriticalSection(&cs_games);
-            LeaveCriticalSection(&cs_clients);
+            pthread_mutex_unlock(&cs_games);
+            pthread_mutex_unlock(&cs_clients);
         }
         // --- SUBMIT ANSWER (CẬP NHẬT LOGIC CLASSIC) ---
         else if (strcmp(type->valuestring, MSG_TYPE_SUBMIT_ANSWER) == 0) {
@@ -376,8 +381,8 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                 int ans = ans_item->valueint;
                 double time_taken = time_item->valuedouble;
                 
-                EnterCriticalSection(&cs_clients);
-                EnterCriticalSection(&cs_games);
+                pthread_mutex_lock(&cs_clients);
+                pthread_mutex_lock(&cs_games);
                 int gid = clients[client_index].game_session_id;
                 
                 if (gid >= 0 && game_sessions[gid].is_active) {
@@ -451,7 +456,7 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                                 update_user_score(game_sessions[gid].player1, game_sessions[gid].score1);
                                 update_user_score(game_sessions[gid].player2, game_sessions[gid].score2);
                                 // Lưu lịch sử PvP
-                                EnterCriticalSection(&cs_history);
+                                pthread_mutex_lock(&cs_history);
                                 if(history_count < MAX_HISTORY) {
                                     game_history[history_count].game_key = game_sessions[gid].game_key;
                                     strcpy(game_history[history_count].player1, game_sessions[gid].player1);
@@ -462,7 +467,7 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                                     game_history[history_count].finished_time = time(NULL);
                                     history_count++;
                                 }
-                                LeaveCriticalSection(&cs_history);
+                                pthread_mutex_unlock(&cs_history);
                                 save_history_to_file();
                             }
                             
@@ -484,14 +489,14 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                         memset(clients[client_index].current_opponent, 0, 50);
                     }
                 }
-                LeaveCriticalSection(&cs_games);
-                LeaveCriticalSection(&cs_clients);
+                pthread_mutex_unlock(&cs_games);
+                pthread_mutex_unlock(&cs_clients);
             }
         }
         // --- CHECK GAME STATUS ---
         else if (strcmp(type->valuestring, MSG_TYPE_CHECK_GAME_STATUS) == 0) {
-             EnterCriticalSection(&cs_clients);
-             EnterCriticalSection(&cs_games);
+             pthread_mutex_lock(&cs_clients);
+             pthread_mutex_lock(&cs_games);
              int gid = clients[client_index].game_session_id;
              if(gid >= 0) {
                  int is_p1 = (strcmp(clients[client_index].username, game_sessions[gid].player1)==0);
@@ -515,13 +520,13 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                      cJSON_AddStringToObject(res, "game_status", "WAITING_OPPONENT");
                  }
              }
-             LeaveCriticalSection(&cs_games);
-             LeaveCriticalSection(&cs_clients);
+             pthread_mutex_unlock(&cs_games);
+             pthread_mutex_unlock(&cs_clients);
         }
         // --- QUIT GAME (CẬP NHẬT LOGIC CLASSIC) ---
         else if (strcmp(type->valuestring, MSG_TYPE_QUIT_GAME) == 0) {
-            EnterCriticalSection(&cs_clients);
-            EnterCriticalSection(&cs_games);
+            pthread_mutex_lock(&cs_clients);
+            pthread_mutex_lock(&cs_games);
             int gid = clients[client_index].game_session_id;
             if(gid >= 0 && game_sessions[gid].is_active) {
                 int is_classic = (strlen(game_sessions[gid].player2) == 0);
@@ -536,11 +541,11 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                         clients[opp_idx].opponent_quit = 1; // Báo đối thủ biết
                         
                         // Lưu lịch sử (Người quit thua)
-                        EnterCriticalSection(&cs_history);
+                        pthread_mutex_lock(&cs_history);
                         if(history_count < MAX_HISTORY) {
                             // ... code lưu history (đã có ở trên)
                         }
-                        LeaveCriticalSection(&cs_history);
+                        pthread_mutex_unlock(&cs_history);
                         
                         // Cộng điểm
                         update_user_score(game_sessions[gid].player1, game_sessions[gid].score1);
@@ -555,17 +560,17 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
             clients[client_index].opponent_quit = 0;
             strcpy(clients[client_index].current_opponent, "");
             
-            EnterCriticalSection(&cs_lobby); lobby_version++; LeaveCriticalSection(&cs_lobby);
+            pthread_mutex_lock(&cs_lobby); lobby_version++; pthread_mutex_unlock(&cs_lobby);
             cJSON_AddStringToObject(res, "type", "QUIT_GAME_SUCCESS");
-            LeaveCriticalSection(&cs_games);
-            LeaveCriticalSection(&cs_clients);
+            pthread_mutex_unlock(&cs_games);
+            pthread_mutex_unlock(&cs_clients);
         }
         // --- CÁC PHẦN KHÁC GIỮ NGUYÊN ---
         else if (strcmp(type->valuestring, MSG_TYPE_GET_HISTORY) == 0) {
              // (Copy logic GET_HISTORY cũ)
              cJSON_AddStringToObject(res, "type", MSG_TYPE_HISTORY_DATA);
              cJSON *h_arr = cJSON_CreateArray();
-             EnterCriticalSection(&cs_history);
+             pthread_mutex_lock(&cs_history);
              for (int i=0; i<history_count; i++) {
                  if (strcmp(game_history[i].player1, clients[client_index].username) == 0 ||
                      strcmp(game_history[i].player2, clients[client_index].username) == 0) {
@@ -592,20 +597,20 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                      cJSON_AddItemToArray(h_arr, item);
                  }
              }
-             LeaveCriticalSection(&cs_history);
+             pthread_mutex_unlock(&cs_history);
              cJSON_AddItemToObject(res, "history", h_arr);
         }
         else if (strcmp(type->valuestring, MSG_TYPE_LOGOUT) == 0) {
              // ... (Copy logic LOGOUT cũ)
-             EnterCriticalSection(&cs_clients);
+             pthread_mutex_lock(&cs_clients);
              if (clients[client_index].is_busy) {
                  cJSON_AddStringToObject(res, "type", "LOGOUT_FAIL");
              } else {
                  clients[client_index].is_logged_in = 0;
-                 EnterCriticalSection(&cs_lobby); lobby_version++; LeaveCriticalSection(&cs_lobby);
+                 pthread_mutex_lock(&cs_lobby); lobby_version++; pthread_mutex_unlock(&cs_lobby);
                  cJSON_AddStringToObject(res, "type", MSG_TYPE_LOGOUT_SUCCESS);
              }
-             LeaveCriticalSection(&cs_clients);
+             pthread_mutex_unlock(&cs_clients);
         }
         else if (strcmp(type->valuestring, MSG_TYPE_GET_LEADERBOARD) == 0) {
             cJSON_AddStringToObject(res, "type", MSG_TYPE_LEADERBOARD_DATA);
@@ -615,14 +620,14 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
             // ... (Copy logic SEND_CHAT cũ)
             cJSON *msg = cJSON_GetObjectItem(req, "message");
             if (msg && msg->valuestring) {
-                EnterCriticalSection(&cs_chat);
+                pthread_mutex_lock(&cs_chat);
                 int idx = chat_count % MAX_CHAT_MESSAGES;
                 strncpy(chat_messages[idx].username, clients[client_index].username, 49);
                 strncpy(chat_messages[idx].message, msg->valuestring, 255);
                 chat_messages[idx].timestamp = time(NULL);
                 if (chat_count < MAX_CHAT_MESSAGES) chat_count++;
                 chat_version++;
-                LeaveCriticalSection(&cs_chat);
+                pthread_mutex_unlock(&cs_chat);
                 cJSON_AddStringToObject(res, "type", MSG_TYPE_CHAT_SUCCESS);
             }
         }
@@ -630,7 +635,7 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
             // ... (Copy logic GET_CHAT_HISTORY cũ)
             cJSON_AddStringToObject(res, "type", MSG_TYPE_CHAT_HISTORY);
             cJSON *msg_arr = cJSON_CreateArray();
-            EnterCriticalSection(&cs_chat);
+            pthread_mutex_lock(&cs_chat);
             int start = (chat_count >= MAX_CHAT_MESSAGES) ? (chat_count % MAX_CHAT_MESSAGES) : 0;
             int count = (chat_count < MAX_CHAT_MESSAGES) ? chat_count : MAX_CHAT_MESSAGES;
             for (int i = 0; i < count; i++) {
@@ -640,7 +645,7 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
                 cJSON_AddStringToObject(msg_obj, "message", chat_messages[idx].message);
                 cJSON_AddItemToArray(msg_arr, msg_obj);
             }
-            LeaveCriticalSection(&cs_chat);
+            pthread_mutex_unlock(&cs_chat);
             cJSON_AddItemToObject(res, "messages", msg_arr);
         }
 
@@ -651,14 +656,14 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
         cJSON_Delete(req);
     }
 
-    EnterCriticalSection(&cs_clients);
+    pthread_mutex_lock(&cs_clients);
     if(clients[client_index].is_logged_in) {
-        EnterCriticalSection(&cs_lobby);
+        pthread_mutex_lock(&cs_lobby);
         lobby_version++;
-        LeaveCriticalSection(&cs_lobby);
+        pthread_mutex_unlock(&cs_lobby);
     }
     clients[client_index].socket = 0;
-    LeaveCriticalSection(&cs_clients);
-    closesocket(client_socket);
-    return 0;
+    pthread_mutex_unlock(&cs_clients);
+    close(client_socket);
+    return NULL;
 }

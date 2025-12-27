@@ -17,20 +17,20 @@ ChatMessage chat_messages[MAX_CHAT_MESSAGES];
 int chat_count = 0;
 int chat_version = 0;
 
-CRITICAL_SECTION cs_clients;
-CRITICAL_SECTION cs_games;
-CRITICAL_SECTION cs_history;
-CRITICAL_SECTION cs_lobby;
-CRITICAL_SECTION cs_data; // Mới
-CRITICAL_SECTION cs_chat;
+pthread_mutex_t cs_clients = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t cs_games = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t cs_history = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t cs_lobby = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t cs_data = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t cs_chat = PTHREAD_MUTEX_INITIALIZER;
 
 void init_server_state() {
-    InitializeCriticalSection(&cs_clients);
-    InitializeCriticalSection(&cs_games);
-    InitializeCriticalSection(&cs_history);
-    InitializeCriticalSection(&cs_lobby);
-    InitializeCriticalSection(&cs_data);
-    InitializeCriticalSection(&cs_chat);
+    pthread_mutex_init(&cs_clients, NULL);
+    pthread_mutex_init(&cs_games, NULL);
+    pthread_mutex_init(&cs_history, NULL);
+    pthread_mutex_init(&cs_lobby, NULL);
+    pthread_mutex_init(&cs_data, NULL);
+    pthread_mutex_init(&cs_chat, NULL);
 
     for (int i = 0; i < MAX_GAME_SESSIONS; i++) {
         game_sessions[i].is_active = 0;

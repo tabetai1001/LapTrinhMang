@@ -108,7 +108,7 @@ void load_questions_to_memory() {
 
 // === 2. CẬP NHẬT ĐIỂM SỐ (GHI FILE) ===
 int update_user_score(const char* username, int score_to_add) {
-    EnterCriticalSection(&cs_data); // Khóa để tránh 2 luồng cùng ghi file
+    pthread_mutex_lock(&cs_data); // Khóa để tránh 2 luồng cùng ghi file
 
     char *content = read_file(ACCOUNT_FILE);
     cJSON *json = content ? cJSON_Parse(content) : NULL;
@@ -116,7 +116,7 @@ int update_user_score(const char* username, int score_to_add) {
     if (!json) {
         // Nếu file lỗi hoặc không có, tạo mảng mới (nhưng thực tế login đã check file rồi)
         if (content) free(content);
-        LeaveCriticalSection(&cs_data);
+        pthread_mutex_unlock(&cs_data);
         return 0;
     }
 
@@ -152,18 +152,18 @@ int update_user_score(const char* username, int score_to_add) {
     cJSON_Delete(json);
     if (content) free(content);
     
-    LeaveCriticalSection(&cs_data);
+    pthread_mutex_unlock(&cs_data);
     return updated;
 }
 
 // ... (Giữ nguyên các hàm load_history, save_history, check_username cũ)
 void save_history_to_file() {
     // ... code cũ ...
-    // Lưu ý: Có thể bọc thêm EnterCriticalSection(&cs_data) nếu muốn an toàn tuyệt đối
+    // Lưu ý: Có thể bọc thêm pthread_mutex_lock(&cs_data) nếu muốn an toàn tuyệt đối
     // Nhưng hàm này đã dùng cs_history để bảo vệ biến RAM rồi. 
     // Tạm thời giữ nguyên logic cũ.
     cJSON *history_arr = cJSON_CreateArray();
-    EnterCriticalSection(&cs_history);
+    pthread_mutex_lock(&cs_history);
     for (int i = 0; i < history_count; i++) {
         cJSON *item = cJSON_CreateObject();
         cJSON_AddNumberToObject(item, "game_key", (double)game_history[i].game_key);
@@ -175,7 +175,7 @@ void save_history_to_file() {
         cJSON_AddNumberToObject(item, "timestamp", (double)game_history[i].finished_time);
         cJSON_AddItemToArray(history_arr, item);
     }
-    LeaveCriticalSection(&cs_history);
+    pthread_mutex_unlock(&cs_history);
     
     char *json_str = cJSON_Print(history_arr);
     FILE *f = fopen(HISTORY_FILE, "w");
@@ -198,7 +198,7 @@ void load_history_from_file() {
         return;
     }
     
-    EnterCriticalSection(&cs_history);
+    pthread_mutex_lock(&cs_history);
     history_count = 0;
     cJSON *item = NULL;
     cJSON_ArrayForEach(item, history_arr) {
@@ -222,7 +222,7 @@ void load_history_from_file() {
             history_count++;
         }
     }
-    LeaveCriticalSection(&cs_history);
+    pthread_mutex_unlock(&cs_history);
     cJSON_Delete(history_arr);
     free(file_content);
 }

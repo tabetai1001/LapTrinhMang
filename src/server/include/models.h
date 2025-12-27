@@ -1,9 +1,7 @@
 #ifndef MODELS_H
 #define MODELS_H
 
-// QUAN TRỌNG: Winsock2 phải luôn được include TRƯỚC windows.h
-#include <winsock2.h>
-#include <windows.h> 
+#include <pthread.h>
 #include <time.h>
 
 #define MAX_CLIENTS 30
@@ -26,7 +24,7 @@ typedef struct {
 
 
 typedef struct {
-    SOCKET socket;
+    int socket;
     char username[50];
     int is_logged_in;
     int score;
