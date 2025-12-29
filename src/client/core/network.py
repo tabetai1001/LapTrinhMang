@@ -10,15 +10,8 @@ class NetworkManager:
         self.lib = self._load_dll()
 
     def _load_dll(self):
-        """Tìm và load thư viện native (DLL trên Windows, SO trên Linux)"""
-        # Phát hiện hệ điều hành
-        import platform
-        system = platform.system()
-        
-        if system == "Windows":
-            lib_name = "client_network.dll"
-        else:  # Linux, Darwin (macOS)
-            lib_name = "client_network.so"
+        """Load thư viện native client_network.so"""
+        lib_name = "client_network.so"
         
         # Logic tìm file thông minh
         possible_paths = [

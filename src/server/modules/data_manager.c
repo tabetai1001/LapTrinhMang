@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../../common/cJSON.h" // Sửa đường dẫn include cJSON cho đúng
+#include "../../common/cJSON.h" 
 #include "../include/data_manager.h"
 #include "../include/server_state.h"
 
